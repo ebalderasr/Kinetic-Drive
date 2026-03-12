@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# Kinetic-Drive
-=======
 # 🧬 Kinetic Drive: The CHO Bioprocess Engine
 
 > **"Don't just watch them grow, master the flow."**
@@ -29,9 +26,9 @@ Esta herramienta integra la metodología de cálculo de **Clonalyzer**  para tra
 
 ---
 
-## 🔬 El Núcleo Científico
+## 🔬 El Core científico
 
-### Velocidad Específica de Crecimiento ($\mu$)
+### Velocidad específica de crecimiento ($\mu$)
 
 Calculada como la pendiente del logaritmo natural de la densidad celular viable respecto al tiempo:
 
@@ -59,20 +56,6 @@ La herramienta aborda el concepto de **Rendimiento Aparente** ($Y_{X/S}$), esenc
 * **MathJax**: Renderizado profesional de ecuaciones en LaTeX.
 * **Tailwind CSS**: Interfaz moderna, responsiva y orientada a la experiencia de usuario (UX).
 
----
-
-## 📂 Despliegue en GitHub Pages
-
-Para publicar esta herramienta:
-
-1. Sube el archivo `index.html` a un repositorio nuevo llamado `Kinetic-Drive`.
-2. Ve a **Settings > Pages**.
-3. En "Build and deployment", selecciona la rama `main` y la carpeta `/ (root)`.
-4. ¡Listo! Tu masterclass interactiva estará disponible en la web.
-
----
 
 ## 👨‍🔬 Sobre el Autor
-
-**Emiliano Balderas Ramírez** 
->>>>>>> f044afd (v1)
+Emiliano Balderas Ramírez** 
