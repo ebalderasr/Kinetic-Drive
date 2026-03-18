@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="theme-color" content="#f2f2f7" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -22,19 +22,36 @@
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
   <style>
+    /* ── iOS 26 / macOS 26 "Liquid Glass" Design System ── */
     :root {
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --line: #dbe4f0;
-      --ink: #0f172a;
-      --muted: #475569;
-      --brand: #312e81;
-      --brand-2: #4338ca;
-      --brand-soft: #eef2ff;
-      --green: #059669;
-      --amber: #d97706;
-      --rose: #e11d48;
-      --cyan: #0891b2;
+      --sys-blue:    #007AFF;
+      --sys-green:   #34C759;
+      --sys-orange:  #FF9500;
+      --sys-red:     #FF3B30;
+      --sys-indigo:  #5856D6;
+      --sys-purple:  #AF52DE;
+      --sys-teal:    #5AC8FA;
+      --label:               rgba(0,0,0,0.88);
+      --secondary-label:     rgba(60,60,67,0.6);
+      --tertiary-label:      rgba(60,60,67,0.3);
+      --separator:           rgba(60,60,67,0.12);
+      --fill-3:              rgba(120,120,128,0.12);
+      --fill-4:              rgba(116,116,128,0.08);
+      --glass-bg:            rgba(255,255,255,0.78);
+      --glass-border:        rgba(255,255,255,0.9);
+      --glass-blur:          blur(40px) saturate(180%);
+      --shadow-sm:           0 2px 8px rgba(0,0,0,0.07), 0 0px 2px rgba(0,0,0,0.05);
+      --shadow-md:           0 4px 20px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.06);
+      --shadow-lg:           0 8px 40px rgba(0,0,0,0.11), 0 2px 8px rgba(0,0,0,0.07);
+      --radius-card:         18px;
+      --radius-module:       28px;
+      --radius-pill:         9999px;
+    }
+
+    * {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      box-sizing: border-box;
     }
 
     html {
@@ -45,393 +62,525 @@
     }
 
     body {
-      background:
-        radial-gradient(circle at top right, rgba(99, 102, 241, 0.12), transparent 28%),
-        linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
-      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      background-color: #F2F2F7;
+      color: var(--label);
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
       padding-bottom: env(safe-area-inset-bottom, 0px);
       width: 100%;
       overflow-x: hidden;
       overscroll-behavior-x: none;
+      min-height: 100vh;
     }
 
-    img,
-    svg,
-    canvas {
-      max-width: 100%;
-      height: auto;
-    }
-
-    .panel {
-      background: rgba(255, 255, 255, 0.94);
-      border: 1px solid var(--line);
-      border-radius: 1.35rem;
-      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
-    }
-
-    .main-section-shell {
-      position: relative;
+    /* ── Mesh gradient background orbs ── */
+    .mesh-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
       overflow: hidden;
-      border: 1.5px solid var(--line);
-      border-radius: 1.65rem;
-      padding: 1.05rem;
-      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.07);
-    }
-
-    .main-section-shell::before {
-      content: "";
-      position: absolute;
-      inset: 0 0 auto 0;
-      height: 6px;
       pointer-events: none;
     }
+    .mesh-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.55;
+    }
+    .mesh-orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(88,86,214,0.35) 0%, transparent 70%); top: -100px; left: -100px; animation: orbFloat 18s ease-in-out infinite; }
+    .mesh-orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(0,122,255,0.3) 0%, transparent 70%); top: 20%; right: -80px; animation: orbFloat 22s ease-in-out infinite reverse; }
+    .mesh-orb-3 { width: 450px; height: 450px; background: radial-gradient(circle, rgba(52,199,89,0.25) 0%, transparent 70%); top: 55%; left: 15%; animation: orbFloat 26s ease-in-out infinite 4s; }
+    .mesh-orb-4 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(255,149,0,0.22) 0%, transparent 70%); bottom: 5%; right: 10%; animation: orbFloat 20s ease-in-out infinite 2s; }
+    .mesh-orb-5 { width: 350px; height: 350px; background: radial-gradient(circle, rgba(175,82,222,0.2) 0%, transparent 70%); top: 40%; left: 55%; animation: orbFloat 24s ease-in-out infinite 6s; }
 
-    .main-section-shell-teaching {
-      border-color: #c7d2fe;
-      background: linear-gradient(180deg, rgba(238, 242, 255, 0.82) 0%, rgba(255, 255, 255, 0.98) 100%);
+    @keyframes orbFloat {
+      0%,100% { transform: translate(0, 0) scale(1); }
+      33%      { transform: translate(30px, -40px) scale(1.05); }
+      66%      { transform: translate(-20px, 30px) scale(0.97); }
     }
 
-    .main-section-shell-teaching::before {
-      background: linear-gradient(90deg, #4338ca 0%, #818cf8 100%);
+    /* ── Glass card ── */
+    .card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-md);
     }
 
-    .main-section-shell-apply {
-      border-color: #bae6fd;
-      background: linear-gradient(180deg, rgba(236, 254, 255, 0.82) 0%, rgba(255, 255, 255, 0.98) 100%);
+    /* ── Module shell (outer container for each section) ── */
+    .module-shell {
+      border-radius: var(--radius-module);
+      padding: 1.1rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+    .module-shell-teaching {
+      background: linear-gradient(160deg, rgba(88,86,214,0.07) 0%, rgba(255,255,255,0.65) 100%);
+      backdrop-filter: blur(30px) saturate(160%);
+      -webkit-backdrop-filter: blur(30px) saturate(160%);
+    }
+    .module-shell-sim {
+      background: linear-gradient(160deg, rgba(0,122,255,0.07) 0%, rgba(255,255,255,0.65) 100%);
+      backdrop-filter: blur(30px) saturate(160%);
+      -webkit-backdrop-filter: blur(30px) saturate(160%);
     }
 
-    .main-section-shell-apply::before {
-      background: linear-gradient(90deg, #0891b2 0%, #67e8f9 100%);
+    /* ── App header ── */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(242,242,247,0.82);
+      backdrop-filter: blur(40px) saturate(200%);
+      -webkit-backdrop-filter: blur(40px) saturate(200%);
+      border-bottom: 1px solid rgba(60,60,67,0.12);
+      padding-top: env(safe-area-inset-top, 0px);
+      box-shadow: 0 1px 0 rgba(60,60,67,0.1), 0 2px 12px rgba(0,0,0,0.06);
     }
 
+    /* ── Segmented control (iOS style) ── */
+    .segmented-control {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(120,120,128,0.16);
+      border-radius: var(--radius-pill);
+      padding: 3px;
+      gap: 0;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(0,0,0,0.06);
+    }
+    .seg-btn {
+      position: relative;
+      padding: 7px 18px;
+      border-radius: var(--radius-pill);
+      border: none;
+      background: transparent;
+      color: var(--secondary-label);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.2s ease;
+      white-space: nowrap;
+      min-height: 36px;
+      outline: none;
+      font-family: inherit;
+    }
+    .seg-btn.active {
+      background: rgba(255,255,255,0.92);
+      color: var(--label);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.1), inset 0 0 0 0.5px rgba(255,255,255,0.8);
+      font-weight: 700;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.18s ease;
+      text-decoration: none;
+      min-height: 36px;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .btn-filled {
+      background: var(--sys-indigo);
+      color: white;
+      box-shadow: 0 3px 12px rgba(88,86,214,0.32);
+    }
+    .btn-filled:hover { transform: translateY(-1px); box-shadow: 0 5px 18px rgba(88,86,214,0.4); }
+    .btn-blue {
+      background: var(--sys-blue);
+      color: white;
+      box-shadow: 0 3px 12px rgba(0,122,255,0.28);
+    }
+    .btn-blue:hover { transform: translateY(-1px); box-shadow: 0 5px 18px rgba(0,122,255,0.36); }
+    .btn-glass {
+      background: rgba(255,255,255,0.78);
+      color: var(--label);
+      border: 1px solid rgba(255,255,255,0.9);
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .btn-glass:hover { transform: translateY(-1px); background: rgba(255,255,255,0.92); box-shadow: var(--shadow-md); }
+    .btn-ghost {
+      background: rgba(88,86,214,0.1);
+      color: var(--sys-indigo);
+      border: 1px solid rgba(88,86,214,0.2);
+    }
+    .btn-ghost:hover { transform: translateY(-1px); background: rgba(88,86,214,0.16); }
+    .btn-sm {
+      padding: 5px 12px;
+      font-size: 12px;
+      min-height: 30px;
+    }
+    .btn-scale-active {
+      background: var(--sys-indigo) !important;
+      color: white !important;
+      box-shadow: 0 2px 8px rgba(88,86,214,0.3) !important;
+    }
+
+    /* ── Section band ── */
     .section-band {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 1rem;
-      border-radius: 1.1rem;
+      border-radius: 14px;
       padding: 1rem 1.1rem;
-      border: 1px solid var(--line);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.55);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
 
-    .section-band-copy {
-      max-width: 56rem;
-      color: var(--muted);
-      line-height: 1.55;
-      font-size: 0.92rem;
-      margin-top: 0.35rem;
-    }
-
-    .section-band-teaching {
-      background: linear-gradient(180deg, #eef2ff 0%, #ffffff 140%);
-      border-color: #c7d2fe;
-    }
-
-    .section-band-apply {
-      background: linear-gradient(180deg, #ecfeff 0%, #ffffff 140%);
-      border-color: #bae6fd;
-    }
-
+    /* ── Chip/badge ── */
     .chip {
       display: inline-flex;
       align-items: center;
-      gap: 0.45rem;
-      padding: 0.35rem 0.75rem;
-      border-radius: 999px;
-      border: 1px solid #c7d2fe;
-      background: #eef2ff;
-      color: #3730a3;
-      font-size: 0.78rem;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
       font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .chip-indigo {
+      background: rgba(88,86,214,0.1);
+      border: 1px solid rgba(88,86,214,0.2);
+      color: #3634A3;
+    }
+    .chip-blue {
+      background: rgba(0,122,255,0.1);
+      border: 1px solid rgba(0,122,255,0.2);
+      color: #0062CC;
     }
 
+    /* ── Inline note ── */
     .inline-note {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 8px;
       margin-top: 1rem;
-      padding: 0.55rem 0.8rem;
-      border-radius: 999px;
-      background: #eef2ff;
-      border: 1px solid #c7d2fe;
-      color: #3730a3;
-      font-size: 0.84rem;
-      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: var(--radius-pill);
+      background: rgba(88,86,214,0.08);
+      border: 1px solid rgba(88,86,214,0.18);
+      color: #3634A3;
+      font-size: 13px;
+      font-weight: 600;
       line-height: 1.35;
     }
 
-    .hero-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.8rem 1rem;
-      border-radius: 1rem;
-      font-weight: 800;
-      font-size: 0.9rem;
-      transition: 0.18s ease;
-      border: 1px solid transparent;
-      text-decoration: none;
-      min-height: 44px;
-      touch-action: manipulation;
-    }
-
-    .hero-btn.primary {
-      background: #0f172a;
-      color: white;
-      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
-    }
-
-    .hero-btn.primary:hover {
-      transform: translateY(-1px);
-      background: #111827;
-    }
-
-    .hero-btn.secondary {
-      background: white;
-      color: #0f172a;
-      border-color: #cbd5e1;
-    }
-
-    .hero-btn.secondary:hover {
-      transform: translateY(-1px);
-      border-color: #94a3b8;
-    }
-
-    .hero-btn.ghost {
-      background: #eef2ff;
-      color: #312e81;
-      border-color: #c7d2fe;
-    }
-
-    .hero-btn.ghost:hover {
-      transform: translateY(-1px);
-      background: #e0e7ff;
-    }
-
+    /* ── Section title / copy ── */
     .section-title {
-      font-size: 1.7rem;
+      font-size: 1.65rem;
       line-height: 1.12;
       font-weight: 900;
       letter-spacing: -0.03em;
+      color: var(--label);
     }
-
     .section-copy {
-      color: var(--muted);
+      color: var(--secondary-label);
       line-height: 1.7;
-      font-size: 1rem;
+      font-size: 0.97rem;
     }
-
     .subtle {
-      color: var(--muted);
-      font-size: 0.92rem;
-      line-height: 1.65;
+      color: var(--secondary-label);
+      font-size: 0.9rem;
+      line-height: 1.6;
     }
 
-    .control-card {
-      border: 1px solid var(--line);
-      border-radius: 1rem;
-      background: white;
-      padding: 1rem;
+    /* ── Interval selector ── */
+    .interval-selector {
+      padding: 1.25rem 1.35rem;
+    }
+    .interval-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--label);
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .interval-desc {
+      font-size: 13px;
+      color: var(--secondary-label);
+      margin-top: 4px;
+      line-height: 1.5;
     }
 
-    select,
-    input[type="number"],
-    input[type="range"] {
-      width: 100%;
+    /* Timeline */
+    .timeline-wrap {
+      position: relative;
+      padding: 8px 16px 4px;
+      margin: 16px 0 8px;
+    }
+    .timeline-track-bg {
+      position: absolute;
+      top: 50%;
+      left: 16px;
+      right: 16px;
+      height: 4px;
+      background: rgba(120,120,128,0.14);
+      border-radius: 2px;
+      transform: translateY(-50%);
+      margin-top: 4px;
+    }
+    .timeline-track-range {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background: linear-gradient(90deg, var(--sys-indigo) 0%, #3634A3 100%);
+      border-radius: 2px;
+      transition: left 0.3s cubic-bezier(0.34,1.56,0.64,1), width 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .timeline-node-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1;
+    }
+    .timeline-label-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-top: 8px;
+      padding: 0 6px;
+    }
+    .timeline-label-row span {
+      width: 32px;
+      text-align: center;
     }
 
-    select,
-    input[type="number"] {
-      border: 1px solid #cbd5e1;
-      border-radius: 0.9rem;
-      padding: 0.72rem 0.88rem;
-      background: white;
-      color: #0f172a;
-      outline: none;
-      min-height: 44px;
-      font-size: 16px;
-      -webkit-appearance: none;
-      appearance: none;
+    /* Interval button rows */
+    .interval-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .interval-row-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--secondary-label);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+      min-width: 44px;
     }
 
-    select:focus,
-    input[type="number"]:focus {
-      border-color: #818cf8;
-      box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.14);
+    /* ── Metrics row ── */
+    .metric-pill {
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 14px;
+      padding: 10px 14px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.05);
     }
-
-    input[type="range"] {
-      accent-color: var(--brand-2);
-      min-height: 44px;
+    .metric-pill .label {
+      color: var(--secondary-label);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 3px;
     }
-
-    .metric-compact {
-      border: 1px solid var(--line);
-      border-radius: 1rem;
-      padding: 0.9rem 1rem;
-      background: linear-gradient(180deg, #fff 0%, #fbfdff 100%);
-    }
-
-    .metric-compact .label {
-      color: var(--muted);
-      font-size: 0.8rem;
-      margin-bottom: 0.2rem;
-    }
-
-    .metric-compact .value {
-      font-size: 1.15rem;
+    .metric-pill .value {
+      font-size: 1.05rem;
       font-weight: 900;
       line-height: 1.12;
       letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
     }
 
+    /* keep .metric-compact for backward compat with JS */
+    .metric-compact {
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 14px;
+      padding: 10px 14px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .metric-compact .label {
+      color: var(--secondary-label);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 3px;
+    }
+    .metric-compact .value {
+      font-size: 1.05rem;
+      font-weight: 900;
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Formula card ── */
     .formula-card {
-      border: 1px solid var(--line);
-      border-radius: 1rem;
-      padding: 1rem;
-      background: white;
-      position: relative;
+      background: rgba(255,255,255,0.65);
+      border: 1px solid rgba(255,255,255,0.85);
+      border-radius: var(--radius-card);
+      padding: 1.1rem;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-sm);
     }
-
     .formula-title {
       font-weight: 900;
       font-size: 1rem;
       margin-bottom: 0.45rem;
       display: flex;
       align-items: center;
-      gap: 0.55rem;
+      gap: 8px;
     }
-
     .formula-sub {
-      font-size: 0.92rem;
-      color: var(--muted);
+      font-size: 0.91rem;
+      color: var(--secondary-label);
       line-height: 1.65;
     }
 
+    /* ── Equation block ── */
     .equation {
       margin-top: 0.8rem;
       padding: 0.85rem 1rem;
-      border-radius: 0.95rem;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: rgba(242,242,247,0.7);
+      border: 1px solid rgba(60,60,67,0.1);
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
 
-    .mono {
-      font-variant-numeric: tabular-nums;
-      font-feature-settings: "tnum" 1, "lnum" 1;
+    /* ── Step card ── */
+    .step {
+      background: rgba(255,255,255,0.62);
+      border: 1px solid rgba(255,255,255,0.85);
+      border-radius: var(--radius-card);
+      padding: 1.1rem;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
     }
 
+    /* ── Control card (sliders) ── */
+    .control-card {
+      background: rgba(255,255,255,0.68);
+      border: 1px solid rgba(255,255,255,0.88);
+      border-radius: var(--radius-card);
+      padding: 1rem;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ── Plot box ── */
     .plot-box {
       width: 100%;
-      height: 400px;
+      height: 380px;
       overflow: hidden;
     }
 
+    /* ── Table ── */
     .table-wrap {
       overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 1rem;
+      border: 1px solid var(--separator);
+      border-radius: 14px;
       -webkit-overflow-scrolling: touch;
       max-width: 100%;
     }
-
     table {
       width: 100%;
       min-width: 1320px;
       border-collapse: collapse;
-      background: white;
+      background: rgba(255,255,255,0.9);
     }
-
-    th,
-    td {
-      border-bottom: 1px solid #e2e8f0;
+    th, td {
+      border-bottom: 1px solid rgba(60,60,67,0.08);
       padding: 0.78rem 0.82rem;
       text-align: right;
       white-space: nowrap;
       font-size: 0.86rem;
     }
-
-    th:first-child,
-    td:first-child {
-      text-align: left;
-    }
-
+    th:first-child, td:first-child { text-align: left; }
     th {
-      background: #eff6ff;
-      color: #1e3a8a;
-      font-size: 0.78rem;
+      background: rgba(88,86,214,0.07);
+      color: #3634A3;
+      font-size: 0.76rem;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
+      font-weight: 700;
       position: sticky;
       top: 0;
       z-index: 1;
     }
+    tr:nth-child(even) td { background: rgba(242,242,247,0.5); }
 
-    tr:nth-child(even) td {
-      background: #fafcff;
-    }
-
-    .step {
-      border: 1px solid var(--line);
-      border-radius: 1rem;
-      padding: 1rem;
-      background: white;
-      text-align: center;
-    }
-
+    /* ── Warn toggle ── */
     .warn-toggle {
       margin-left: auto;
       position: relative;
     }
-
     .warn-toggle summary {
       list-style: none;
       cursor: pointer;
-      width: 1.6rem;
-      height: 1.6rem;
-      border-radius: 999px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #fff7ed;
-      color: #b45309;
-      border: 1px solid #fdba74;
+      background: rgba(255,149,0,0.12);
+      color: #C75300;
+      border: 1px solid rgba(255,149,0,0.3);
       font-weight: 900;
+      font-size: 12px;
       user-select: none;
     }
-
-    .warn-toggle summary::-webkit-details-marker {
-      display: none;
-    }
-
+    .warn-toggle summary::-webkit-details-marker { display: none; }
     .warn-popup {
       position: absolute;
       top: 2rem;
       right: 0;
       width: min(320px, 78vw);
       padding: 0.9rem 1rem;
-      border-radius: 1rem;
-      border: 1px solid #fdba74;
-      background: #fff7ed;
+      border-radius: 14px;
+      border: 1px solid rgba(255,149,0,0.25);
+      background: rgba(255,247,237,0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       color: #92400e;
-      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
+      box-shadow: var(--shadow-lg);
       font-size: 0.84rem;
       line-height: 1.55;
       z-index: 20;
     }
 
+    /* ── Misc ── */
+    .mono {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1, "lnum" 1;
+    }
     .small-ref {
       margin-top: 0.7rem;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       line-height: 1.5;
-      color: #64748b;
+      color: var(--tertiary-label);
     }
-
     .slider-label {
       display: flex;
       justify-content: space-between;
@@ -439,222 +588,288 @@
       gap: 1rem;
       font-size: 0.9rem;
       font-weight: 800;
-      color: #1e293b;
+      color: var(--label);
       margin-bottom: 0.35rem;
     }
-
     .slider-help {
       margin-top: 0.28rem;
       font-size: 0.76rem;
-      color: var(--muted);
+      color: var(--secondary-label);
       line-height: 1.42;
     }
-
-    .brand-wrap {
-      display: flex;
-      align-items: center;
-      gap: 0.9rem;
+    select, input[type="number"] {
+      width: 100%;
+      border: 1px solid rgba(60,60,67,0.18);
+      border-radius: 12px;
+      padding: 0.72rem 0.88rem;
+      background: rgba(255,255,255,0.8);
+      color: var(--label);
+      outline: none;
+      min-height: 44px;
+      font-size: 16px;
+      -webkit-appearance: none;
+      appearance: none;
+      font-family: inherit;
     }
+    select:focus, input[type="number"]:focus {
+      border-color: var(--sys-indigo);
+      box-shadow: 0 0 0 3px rgba(88,86,214,0.15);
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--sys-indigo);
+      min-height: 44px;
+    }
+    img, svg, canvas { max-width: 100%; height: auto; }
 
+    /* ── Brand logo ── */
     .brand-logo {
       height: 44px;
       width: auto;
       object-fit: contain;
       flex-shrink: 0;
     }
-
     @media (min-width: 640px) {
-      .brand-logo {
-        height: 56px;
-      }
+      .brand-logo { height: 52px; }
     }
 
+    /* ── Footer ── */
+    .app-footer {
+      border-top: 1px solid var(--separator);
+      background: rgba(242,242,247,0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* ── Responsive ── */
     @media (max-width: 1024px) {
-      .plot-box {
-        height: 340px;
-      }
+      .plot-box { height: 320px; }
     }
-
     @media (max-width: 640px) {
-      .hero-btn {
-        width: 100%;
-      }
-
-      .section-band {
-        padding: 0.85rem 0.95rem;
-      }
-
-      .main-section-shell {
-        padding: 0.85rem;
-        border-radius: 1.4rem;
-      }
-
-      .inline-note {
-        width: 100%;
-        border-radius: 1rem;
-      }
+      .module-shell { padding: 0.85rem; border-radius: 22px; }
+      .interval-selector { padding: 1rem; }
+      .section-title { font-size: 1.35rem; }
+      .segmented-control { width: 100%; }
+      .seg-btn { flex: 1; text-align: center; }
     }
   </style>
 </head>
-<body class="text-slate-900">
-  <header
-    class="relative z-30 border-b border-indigo-200/70 bg-white/88 backdrop-blur-xl lg:sticky lg:top-0"
-    style="padding-top: env(safe-area-inset-top, 0px);"
-  >
+<body>
+
+  <!-- Animated mesh gradient background -->
+  <div aria-hidden="true" class="mesh-bg">
+    <div class="mesh-orb mesh-orb-1"></div>
+    <div class="mesh-orb mesh-orb-2"></div>
+    <div class="mesh-orb mesh-orb-3"></div>
+    <div class="mesh-orb mesh-orb-4"></div>
+    <div class="mesh-orb mesh-orb-5"></div>
+  </div>
+
+  <!-- ══ HEADER ══ -->
+  <header class="app-header">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
-        <div class="brand-wrap">
+      <div class="flex flex-col gap-3 py-3 lg:flex-row lg:items-center lg:justify-between">
+
+        <!-- Brand -->
+        <div class="flex items-center gap-3 min-w-0">
           <img src="logo_app.png" alt="Kinetic Drive" class="brand-logo" />
-          <div>
-            <p id="brandTag" class="text-xs font-extrabold uppercase tracking-[0.18em] text-indigo-700">
-              Kinetic Drive • HostCell
-            </p>
-            <h1 id="heroTitle" class="mt-1 text-2xl font-black tracking-tight sm:text-3xl">
-              Kinetic Drive
-            </h1>
-            <p id="heroLead" class="mt-2 max-w-4xl text-sm leading-6 text-slate-600 sm:text-base">
+          <div class="min-w-0">
+            <p id="brandTag" class="text-xs font-extrabold uppercase tracking-widest" style="color:var(--sys-indigo);">Kinetic Drive • HostCell</p>
+            <h1 id="heroTitle" class="mt-0.5 text-xl font-black tracking-tight sm:text-2xl" style="color:var(--label);">Kinetic Drive</h1>
+            <p id="heroLead" class="mt-1 text-xs leading-5 sm:text-sm" style="color:var(--secondary-label); max-width:42rem;">
               Recurso interactivo para enseñar cómo se calculan los parámetros más usados para caracterizar un cultivo de células de mamífero, con foco en células CHO.
             </p>
           </div>
         </div>
 
-        <nav class="flex flex-wrap gap-2">
-          <a id="navExplanation" class="hero-btn primary" href="#seccion-1">Explicación</a>
-          <a id="navSimulator" class="hero-btn primary" href="#seccion-2">Simulador</a>
-          <a
-            id="repoBtn"
-            class="hero-btn ghost"
-            href="https://github.com/ebalderasr/Kinetic-Drive.git"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+        <!-- Segmented control (centered) -->
+        <div class="flex justify-center">
+          <div class="segmented-control" role="tablist">
+            <button id="tabTeaching" class="seg-btn active" role="tab" aria-selected="true"
+              title="Explicación y ejemplo con datos reales"
+              onclick="switchModule('teaching')">
+              📚 <span id="tabTeachingLabel">Enseñanza</span>
+            </button>
+            <button id="tabSimulation" class="seg-btn" role="tab" aria-selected="false"
+              title="Simulador con modelo logístico"
+              onclick="switchModule('simulation')">
+              🔬 <span id="tabSimulationLabel">Simulación</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <nav class="flex flex-wrap items-center gap-2 justify-end">
+          <a id="repoBtn" class="btn btn-glass" href="https://github.com/ebalderasr/Kinetic-Drive.git" target="_blank" rel="noopener noreferrer">
             Repositorio
           </a>
-          <button id="langBtn" class="hero-btn secondary" type="button">ES / EN</button>
+          <button id="langBtn" class="btn btn-ghost" type="button">ES / EN</button>
         </nav>
       </div>
     </div>
   </header>
 
-  <main class="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:space-y-10 sm:px-6 sm:py-8 lg:px-8">
-    <section class="main-section-shell main-section-shell-teaching space-y-8" id="seccion-1">
-      <div class="section-band section-band-teaching">
+  <!-- ══ MAIN ══ -->
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+    <!-- ━━━━━━━━━━━━━━━ TEACHING MODULE ━━━━━━━━━━━━━━━ -->
+    <section id="seccion-1" class="module-shell module-shell-teaching space-y-6">
+
+      <!-- Section band -->
+      <div class="section-band">
         <div>
-          <div id="section1Chip" class="chip">Sección 1 · Explicación</div>
-          <h2 id="section1Title" class="mt-3 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">Fundamentos, fórmulas y ejemplo de cálculo</h2>
-          <p id="section1Lead" class="section-band-copy">Esta sección está pensada para aprender de dónde salen los parámetros, cómo se calculan con datos discretos y cómo se interpretan en un cultivo CHO antes de pasar al simulador.</p>
+          <div id="section1Chip" class="chip chip-indigo">Sección 1 · Enseñanza</div>
+          <h2 id="section1Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">Fundamentos, fórmulas y ejemplo de cálculo</h2>
+          <p id="section1Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección está pensada para aprender de dónde salen los parámetros, cómo se calculan con datos discretos y cómo se interpretan en un cultivo CHO antes de pasar al simulador.</p>
         </div>
       </div>
 
-      <section class="panel p-5 sm:p-6" id="explicacion">
-        <div>
-          <h2 id="introTitle" class="section-title mt-1">Qué hace esta página</h2>
-          <p id="introCopy" class="section-copy mt-3 max-w-4xl">
-            Esta sección muestra cómo pasar de variables primarias medidas experimentalmente, como densidad celular viable, glucosa, lactato y producto, a parámetros derivados que suelen usarse para describir y comparar cultivos de células CHO. La lógica es siempre la misma: medir, integrar cuando hace falta, normalizar y después interpretar con cuidado qué significa cada parámetro.
-          </p>
-          <div class="inline-note" id="intervalExampleNote">Ejemplo guiado con un intervalo fijo de muestreo para no saturar la vista.</div>
+      <!-- ── INTERVAL SELECTOR (prominent, new feature) ── -->
+      <div class="card interval-selector" id="explicacion">
+        <!-- Title row -->
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div class="interval-title">
+              <span style="font-size:1.2rem;">🗓️</span>
+              <span id="intervalSelectorTitle">Intervalo de cálculo</span>
+            </div>
+            <p id="intervalSelectorDesc" class="interval-desc">Selecciona el tramo de tiempo para calcular μ, IVCD, tasas específicas y rendimientos.</p>
+          </div>
         </div>
 
+        <!-- Visual timeline -->
+        <div class="timeline-wrap">
+          <div class="timeline-track-bg">
+            <div id="timelineRangeTrack" class="timeline-track-range" style="left:0%;width:20%;"></div>
+          </div>
+          <div id="timelineNodeRow" class="timeline-node-row"></div>
+        </div>
+        <div id="timelineLabelRow" class="timeline-label-row"></div>
+
+        <!-- Start / End button rows -->
+        <div class="mt-4 space-y-3">
+          <div class="interval-row">
+            <span id="startRowLabel" class="interval-row-label">Inicio</span>
+            <div id="startBtnRow" class="flex flex-wrap gap-2"></div>
+          </div>
+          <div class="interval-row">
+            <span id="endRowLabel" class="interval-row-label">Fin</span>
+            <div id="endBtnRow" class="flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+
+        <!-- Metrics summary row — hidden legacy outputs kept for JS compat -->
+        <div hidden aria-hidden="true">
+          <span id="selectedRangeOut"></span>
+          <span id="dGlcOut"></span><span id="dLacOut"></span><span id="dProdOut"></span>
+        </div>
+        <div class="mt-5 grid gap-3 grid-cols-2 sm:grid-cols-3">
+          <div class="metric-compact"><div id="mLabelDt" class="label">Δt</div><div id="deltaTimeOut" class="value mono">—</div></div>
+          <div class="metric-compact"><div id="mLabelMu" class="label">&mu;</div><div id="muOut" class="value mono" style="color:#1A8A3A;">—</div></div>
+          <div class="metric-compact"><div id="mLabelIvcd" class="label">IVCD</div><div id="ivcdOutCompact" class="value mono" style="color:#0066CC;">—</div></div>
+          <div class="metric-compact"><div id="mLabelQglc" class="label">qGlc</div><div id="qGlcOut" class="value mono" style="color:#C75300;">—</div></div>
+          <div class="metric-compact"><div id="mLabelQLac" class="label">qLac</div><div id="qLacOut" class="value mono" style="color:#5AC8FA;">—</div></div>
+          <div class="metric-compact"><div id="mLabelQp" class="label">qP</div><div id="qPOut" class="value mono" style="color:#C0003C;">—</div></div>
+        </div>
+
+        <!-- Hidden intro copy / interval example note (preserved for translations) -->
+        <p id="intervalExampleNote" class="inline-note mt-4">Ejemplo guiado con un intervalo fijo de muestreo para no saturar la vista.</p>
+
+        <!-- Hidden elements for JS compatibility -->
         <div class="hidden" aria-hidden="true">
           <select id="pairSelect"></select>
           <select id="startSelect"></select>
           <select id="endSelect"></select>
           <span id="selectionModeText"></span>
         </div>
+      </div>
 
-        <div class="mt-6 grid gap-6 lg:grid-cols-2">
-          <section class="panel p-4">
-            <div class="flex items-end justify-between gap-4">
-              <div>
-                <h3 id="plot1Title" class="text-lg font-black">Curva de crecimiento e IVCD</h3>
-                <p id="plot1Lead" class="subtle mt-1">El área sombreada corresponde al tramo de ejemplo usado para calcular la IVCD digital.</p>
-              </div>
-              <div class="flex gap-2">
-                <button id="dataLinearBtn" class="hero-btn secondary !px-3 !py-2 !text-xs" type="button">Xv lineal</button>
-                <button id="dataLogBtn" class="hero-btn secondary !px-3 !py-2 !text-xs" type="button">Xv log</button>
-              </div>
-            </div>
-            <div id="growthPlotData" class="plot-box mt-4"></div>
-          </section>
-
-          <section class="panel p-4">
+      <!-- ── Plots grid ── -->
+      <div class="grid gap-6 lg:grid-cols-2">
+        <section class="card p-4">
+          <div class="flex items-start justify-between gap-3">
             <div>
-              <h3 id="plot2Title" class="text-lg font-black">Sustratos y producto</h3>
-              <p id="plot2Lead" class="subtle mt-1">Cuando pasas el cursor sobre cualquiera de las dos gráficas, la referencia temporal se sincroniza en ambas.</p>
+              <h3 id="plot1Title" class="text-lg font-black">Curva de crecimiento e IVCD</h3>
+              <p id="plot1Lead" class="subtle mt-1">El área sombreada corresponde al tramo de ejemplo usado para calcular la IVCD digital.</p>
             </div>
-            <div id="metPlotData" class="plot-box mt-4"></div>
-          </section>
-        </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button id="dataLinearBtn" class="btn btn-glass btn-sm btn-scale-active" type="button">Xv lineal</button>
+              <button id="dataLogBtn" class="btn btn-glass btn-sm" type="button">Xv log</button>
+            </div>
+          </div>
+          <div id="growthPlotData" class="plot-box mt-4"></div>
+        </section>
 
-        <div class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-          <div class="metric-compact"><div id="mLabelRange" class="label">Tramo</div><div id="selectedRangeOut" class="value mono text-indigo-700">—</div></div>
-          <div class="metric-compact"><div id="mLabelDt" class="label">Δt</div><div id="deltaTimeOut" class="value mono">—</div></div>
-          <div class="metric-compact"><div id="mLabelMu" class="label">μ</div><div id="muOut" class="value mono text-emerald-700">—</div></div>
-          <div class="metric-compact"><div id="mLabelIvcd" class="label">IVCDΔ</div><div id="ivcdOutCompact" class="value mono text-cyan-700">—</div></div>
-          <div class="metric-compact"><div id="mLabelQglc" class="label">qGlc</div><div id="qGlcOut" class="value mono text-amber-700">—</div></div>
-          <div class="metric-compact"><div id="mLabelQp" class="label">qP</div><div id="qPOut" class="value mono text-rose-700">—</div></div>
-        </div>
-      </section>
+        <section class="card p-4">
+          <div>
+            <h3 id="plot2Title" class="text-lg font-black">Sustratos y producto</h3>
+            <p id="plot2Lead" class="subtle mt-1">Cuando pasas el cursor sobre cualquiera de las dos gráficas, la referencia temporal se sincroniza en ambas.</p>
+          </div>
+          <div id="metPlotData" class="plot-box mt-4"></div>
+        </section>
+      </div>
 
-      <section class="panel p-5 sm:p-6" id="formulas">
+      <!-- ── Formula cards ── -->
+      <section class="card p-5 sm:p-6" id="formulas">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 id="formulaMainTitle" class="section-title">Cómo se calcula cada parámetro</h2>
             <p id="formulaMainLead" class="section-copy mt-2 max-w-4xl">En cada bloque se muestra primero una forma continua, que nace del balance o de la definición formal del parámetro, y después una forma discreta, que es la que realmente se usa al trabajar con datos digitales obtenidos por muestreo.</p>
           </div>
-          <div id="formulaChip" class="chip">Versión continua + versión discreta</div>
+          <div id="formulaChip" class="chip chip-indigo" style="flex-shrink:0;">Versión continua + versión discreta</div>
         </div>
 
         <div class="mt-6 grid gap-4 lg:grid-cols-2">
           <article class="formula-card">
-            <div class="formula-title text-indigo-800"><span id="muTitle">¿Qué es y cómo se calcula μ?</span><details class="warn-toggle"><summary>!</summary><div id="muWarn" class="warn-popup">μ se calcula aquí por intervalo y no como una sola constante global. Esto es útil porque en cultivos CHO el crecimiento cambia con la fase del cultivo, la disponibilidad de nutrientes y la pérdida de viabilidad.</div></details></div>
+            <div class="formula-title" style="color:#3634A3;"><span id="muTitle">¿Qué es y cómo se calcula μ?</span><details class="warn-toggle"><summary>!</summary><div id="muWarn" class="warn-popup">μ se calcula aquí por intervalo y no como una sola constante global. Esto es útil porque en cultivos CHO el crecimiento cambia con la fase del cultivo, la disponibilidad de nutrientes y la pérdida de viabilidad.</div></details></div>
             <p id="muLead" class="formula-sub">La velocidad específica de crecimiento describe qué tan rápido cambia la biomasa viable en términos relativos.</p>
             <p id="continuous1" class="formula-sub mt-3"><strong>Forma continua</strong></p>
             <div class="equation">$$\frac{dX_v}{dt}=\mu X_v$$</div>
             <p id="discrete1" class="formula-sub mt-3"><strong>Con datos discretos</strong></p>
             <div class="equation">$$\mu\approx\frac{\ln(X_{v,2})-\ln(X_{v,1})}{t_2-t_1}$$</div>
-            <p id="muExplain" class="mt-3 text-sm leading-7 text-slate-700 mono"></p>
+            <p id="muExplain" class="mt-3 text-sm leading-7 mono" style="color:var(--label);"></p>
           </article>
 
           <article class="formula-card">
-            <div class="formula-title text-cyan-800"><span id="ivcdTitle">IVCD: el puente entre concentración y célula</span><details class="warn-toggle"><summary>!</summary><div id="ivcdWarn" class="warn-popup">La IVCD es particularmente útil en cultivos de mamífero porque el proceso dura varios días y la biomasa viable cambia de manera importante durante la corrida. En sistemas microbianos rápidos, a menudo se trabaja más directamente con derivadas locales, fases exponenciales bien definidas o balances de sustrato más cerrados.</div></details></div>
+            <div class="formula-title" style="color:#0062CC;"><span id="ivcdTitle">IVCD: el puente entre concentración y célula</span><details class="warn-toggle"><summary>!</summary><div id="ivcdWarn" class="warn-popup">La IVCD es particularmente útil en cultivos de mamífero porque el proceso dura varios días y la biomasa viable cambia de manera importante durante la corrida. En sistemas microbianos rápidos, a menudo se trabaja más directamente con derivadas locales, fases exponenciales bien definidas o balances de sustrato más cerrados.</div></details></div>
             <p id="ivcdLead" class="formula-sub">La IVCD integra la biomasa viable en el tiempo. Por eso sirve para normalizar consumos o producción y estimar cuánto hizo una célula promedio durante un tramo dado.</p>
             <p id="continuous2" class="formula-sub mt-3"><strong>Forma continua</strong></p>
             <div class="equation">$$IVCD=\int X_v(t)\,dt$$</div>
             <p id="discrete2" class="formula-sub mt-3"><strong>Con datos discretos</strong></p>
             <div class="equation">$$IVCD_{\Delta t}\approx\sum_i\left(\frac{X_{v,i}+X_{v,i+1}}{2}\right)(t_{i+1}-t_i)$$</div>
-            <p id="ivcdExplain" class="mt-3 text-sm leading-7 text-slate-700 mono"></p>
+            <p id="ivcdExplain" class="mt-3 text-sm leading-7 mono" style="color:var(--label);"></p>
             <p id="ivcdRef" class="small-ref">Ejemplos de uso de IVCD/IVCC en cultivo de mamífero incluyen Oguchi et al. (2007), Mahé et al. (2021) y Schellenberg et al. (2022).</p>
           </article>
 
           <article class="formula-card">
-            <div class="formula-title text-amber-800"><span id="qglcTitle">Consumo volumétrico y consumo específico</span><details class="warn-toggle"><summary>!</summary><div id="qglcWarn" class="warn-popup">r y q no responden a la misma pregunta. r describe el cambio observado por volumen de cultivo; q intenta estimar el comportamiento medio por célula viable en el tramo analizado.</div></details></div>
+            <div class="formula-title" style="color:#C75300;"><span id="qglcTitle">Consumo volumétrico y consumo específico</span><details class="warn-toggle"><summary>!</summary><div id="qglcWarn" class="warn-popup">r y q no responden a la misma pregunta. r describe el cambio observado por volumen de cultivo; q intenta estimar el comportamiento medio por célula viable en el tramo analizado.</div></details></div>
             <p id="qglcLead" class="formula-sub">La tasa volumétrica de consumo indica cuánto cambia la concentración en el reactor. El consumo específico divide ese cambio entre la IVCD del tramo.</p>
             <p id="continuous3" class="formula-sub mt-3"><strong>Forma continua</strong></p>
             <div class="equation">$$\frac{dS}{dt}=-r_S,\qquad \frac{dS}{dt}=-q_SX_v$$</div>
             <p id="discrete3" class="formula-sub mt-3"><strong>Con datos discretos</strong></p>
             <div class="equation">$$r_{Glc}\approx\frac{Glc_1-Glc_2}{\Delta t},\qquad q_{Glc}\approx\frac{Glc_1-Glc_2}{IVCD_{\Delta t}}$$</div>
-            <p id="qGlcExplain" class="mt-3 text-sm leading-7 text-slate-700 mono"></p>
+            <p id="qGlcExplain" class="mt-3 text-sm leading-7 mono" style="color:var(--label);"></p>
           </article>
 
           <article class="formula-card">
-            <div class="formula-title text-rose-800"><span id="qpTitle">Tasa de producción específica de producto</span><details class="warn-toggle"><summary>!</summary><div id="qpWarn" class="warn-popup">qP se interpreta mejor cuando el tramo elegido es fisiológicamente coherente. Si mezclas fases muy distintas en un solo cálculo, el valor promedio puede ocultar cambios importantes de productividad.</div></details></div>
+            <div class="formula-title" style="color:#C0003C;"><span id="qpTitle">Tasa de producción específica de producto</span><details class="warn-toggle"><summary>!</summary><div id="qpWarn" class="warn-popup">qP se interpreta mejor cuando el tramo elegido es fisiológicamente coherente. Si mezclas fases muy distintas en un solo cálculo, el valor promedio puede ocultar cambios importantes de productividad.</div></details></div>
             <p id="qpLead" class="formula-sub">La producción específica intenta responder cuánto producto generó, en promedio, una célula viable durante el tramo seleccionado.</p>
             <p id="continuous4" class="formula-sub mt-3"><strong>Forma continua</strong></p>
             <div class="equation">$$\frac{dP}{dt}=q_PX_v$$</div>
             <p id="discrete4" class="formula-sub mt-3"><strong>Con datos discretos</strong></p>
             <div class="equation">$$q_P\approx\frac{P_2-P_1}{IVCD_{\Delta t}}$$</div>
-            <p id="qPExplain" class="mt-3 text-sm leading-7 text-slate-700 mono"></p>
+            <p id="qPExplain" class="mt-3 text-sm leading-7 mono" style="color:var(--label);"></p>
           </article>
 
           <article class="formula-card lg:col-span-2">
-            <div class="formula-title text-slate-800"><span id="yieldTitle">Rendimientos: biomasa/sustrato y producto/sustrato</span><details class="warn-toggle"><summary>!</summary><div id="yieldWarn" class="warn-popup">En cultivos de células de mamífero, y especialmente en medios complejos, estos rendimientos deben leerse como rendimientos aparentes respecto al sustrato elegido. La glucosa no tiene por qué ser la única fuente de carbono o energía consumida en paralelo.</div></details></div>
+            <div class="formula-title" style="color:var(--label);"><span id="yieldTitle">Rendimientos: biomasa/sustrato y producto/sustrato</span><details class="warn-toggle"><summary>!</summary><div id="yieldWarn" class="warn-popup">En cultivos de células de mamífero, y especialmente en medios complejos, estos rendimientos deben leerse como rendimientos aparentes respecto al sustrato elegido. La glucosa no tiene por qué ser la única fuente de carbono o energía consumida en paralelo.</div></details></div>
             <p id="yieldLead" class="formula-sub">Los rendimientos relacionan el aumento de biomasa o de producto con el sustrato consumido. Son muy útiles para comparar condiciones, pero no siempre representan una estequiometría cerrada del metabolismo real.</p>
             <div class="mt-4 grid gap-4 lg:grid-cols-2">
               <div><p id="continuous5" class="formula-sub"><strong>Forma continua</strong></p><div class="equation">$$Y_{X/S}=\frac{dX_v}{-dS},\qquad Y_{P/S}=\frac{dP}{-dS}$$</div></div>
               <div><p id="discrete5" class="formula-sub"><strong>Con datos discretos</strong></p><div class="equation">$$Y_{X/Glc}\approx\frac{X_{v,2}-X_{v,1}}{Glc_1-Glc_2},\qquad Y_{P/Glc}\approx\frac{P_2-P_1}{Glc_1-Glc_2}$$</div></div>
             </div>
-            <p id="yieldExplain" class="mt-3 text-sm leading-7 text-slate-700 mono"></p>
+            <p id="yieldExplain" class="mt-3 text-sm leading-7 mono" style="color:var(--label);"></p>
             <div class="mt-4 grid gap-4 lg:grid-cols-2">
               <div class="equation"><strong id="apparentTitle">Rendimiento aparente</strong><br><span id="apparentCopy">Se obtiene cuando eliges un sustrato medido, por ejemplo glucosa, como único denominador de la relación.</span></div>
               <div class="equation"><strong id="realTitle">Rendimiento real</strong><br><span id="realCopy">Exigiría un balance más completo de entradas y salidas relevantes de carbono, energía y, en algunos casos, nitrógeno; por eso rara vez se cierra solo con glucosa en medios complejos de mamífero.</span></div>
@@ -663,80 +878,26 @@
         </div>
       </section>
 
-      <section class="panel p-5 sm:p-6">
+      <!-- ── Steps summary ── -->
+      <section class="card p-5 sm:p-6">
         <h2 id="stepsTitle" class="section-title">Resumen del flujo de cálculo</h2>
         <div class="mt-5 grid gap-4 lg:grid-cols-4">
-          <div class="step"><div id="step1Badge" class="text-xs font-extrabold uppercase tracking-[.14em] text-slate-500">Paso 1</div><div id="step1Title" class="mt-2 font-black text-indigo-700">Medir</div><p id="step1Copy" class="mt-2 text-sm text-slate-600">Obtener Xv, glucosa, lactato y producto en tiempos definidos.</p></div>
-          <div class="step"><div id="step2Badge" class="text-xs font-extrabold uppercase tracking-[.14em] text-slate-500">Paso 2</div><div id="step2Title" class="mt-2 font-black text-cyan-700">Integrar</div><p id="step2Copy" class="mt-2 text-sm text-slate-600">Calcular IVCD con suma trapezoidal sobre los datos disponibles.</p></div>
-          <div class="step"><div id="step3Badge" class="text-xs font-extrabold uppercase tracking-[.14em] text-slate-500">Paso 3</div><div id="step3Title" class="mt-2 font-black text-amber-700">Normalizar</div><p id="step3Copy" class="mt-2 text-sm text-slate-600">Obtener r, q y rendimientos para el tramo de interés.</p></div>
-          <div class="step"><div id="step4Badge" class="text-xs font-extrabold uppercase tracking-[.14em] text-slate-500">Paso 4</div><div id="step4Title" class="mt-2 font-black text-rose-700">Interpretar</div><p id="step4Copy" class="mt-2 text-sm text-slate-600">Comparar fases, condiciones o clones y revisar las limitaciones del modelo.</p></div>
-        </div>
-      </section>
-    </section>
-
-    <section class="main-section-shell main-section-shell-apply space-y-8" id="seccion-2">
-      <div class="section-band section-band-apply">
-        <div>
-          <div id="section2Chip" class="chip">Sección 2 · Simulador</div>
-          <h2 id="section2Title" class="mt-3 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">Simulador y exploración del comportamiento del cultivo</h2>
-          <p id="section2Lead" class="section-band-copy">Esta sección usa un modelo simple para conectar los conceptos con un escenario dinámico. Está pensada para mover parámetros, observar tendencias y reforzar el significado biológico de $\mu$, IVCD, tasas específicas, tasas volumétricas y rendimientos.</p>
-        </div>
-      </div>
-
-      <section class="panel p-5 sm:p-6" id="simulador">
-        <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 id="simTitle" class="section-title">Simulador</h2>
-            <p id="simLead" class="section-copy mt-2 max-w-4xl">Esta sección no intenta ajustar un cultivo real. Su función es mostrar, de manera controlada, cómo cambian el crecimiento, el agotamiento de glucosa, la acumulación de producto y algunos parámetros derivados cuando se modifican ciertas hipótesis del sistema.</p>
-          </div>
-        </div>
-
-        <div class="mt-6 grid gap-6 xl:grid-cols-[360px_1fr]">
-          <aside class="space-y-5">
-            <div class="control-card"><div class="slider-label"><span id="simMuText">$\mu_{max}$</span><span id="simMuLabel" class="mono text-indigo-700"></span></div><input id="simMu" type="range" min="0.020" max="0.050" step="0.001" value="0.035" /><p id="simMuHelp" class="slider-help">Velocidad máxima en la fase de crecimiento.</p></div>
-            <div class="control-card"><div class="slider-label"><span id="simX0Text">$X_{v,0}$</span><span id="simX0Label" class="mono text-indigo-700"></span></div><input id="simX0" type="range" min="0.2" max="1.0" step="0.05" value="0.3" /><p id="simX0Help" class="slider-help">Densidad celular viable inicial.</p></div>
-            <div class="control-card"><div class="slider-label"><span id="simXmaxText">$X_{v,max}$</span><span id="simXmaxLabel" class="mono text-indigo-700"></span></div><input id="simXmax" type="range" min="6" max="20" step="1" value="10" /><p id="simXmaxHelp" class="slider-help">Capacidad de carga didáctica del sistema.</p></div>
-            <div class="control-card"><div class="slider-label"><span id="simGlcText">Glucosa inicial</span><span id="simGlc0Label" class="mono text-indigo-700"></span></div><input id="simGlc0" type="range" min="6.0" max="8.0" step="0.1" value="7.0" /><p id="simGlcHelp" class="slider-help">Se convierte internamente a mM.</p></div>
-            <div class="control-card"><div class="slider-label"><span id="simYxsText">$Y_{X/Glc}$ aparente</span><span id="simYxsLabel" class="mono text-indigo-700"></span></div><input id="simYxs" type="range" min="0.08" max="0.35" step="0.01" value="0.18" /><p id="simYxsHelp" class="slider-help">Más alto implica menos glucosa consumida por la misma ganancia de biomasa, dentro del modelo simplificado.</p></div>
-            <div class="control-card"><div class="slider-label"><span id="simQpText">$q_P$</span><span id="simQpLabel" class="mono text-indigo-700"></span></div><input id="simQp" type="range" min="0.5" max="2.5" step="0.1" value="1.5" /><p id="simQpHelp" class="slider-help">Productividad específica supuesta.</p></div>
-            <button id="simResetBtn" class="hero-btn primary w-full" type="button">Restaurar simulación</button>
-          </aside>
-
-          <div class="space-y-6">
-            <div class="panel p-4">
-              <h3 id="simHowTitle" class="text-lg font-black">Cómo se calcula la simulación</h3>
-              <div class="mt-4 grid gap-4 lg:grid-cols-2">
-                <div class="equation">$$\frac{dX_v}{dt}=\mu_{eff}X_v,\qquad \mu_{eff}=\mu_{max}\left(1-\frac{X_v}{X_{v,max}}\right)$$</div>
-                <div class="equation">$$\Delta Glc \approx \frac{\Delta X_v}{Y_{X/Glc}} + m_{Glc}\,IVCD_{\Delta t},\qquad \Delta P \approx q_P\,IVCD_{\Delta t}$$</div>
-              </div>
-              <p id="simHowCopy" class="subtle mt-4">El crecimiento se aproxima con una forma logística simple. El consumo de glucosa tiene dos componentes: uno asociado al aumento de biomasa y otro de mantenimiento. La formación de producto se calcula a partir de un qP constante. No se modelan cambios de viabilidad, cambios metabólicos de fase, consumo de múltiples sustratos, ni regulación fisiológica fina; esas omisiones son deliberadas para mantener la claridad didáctica.</p>
-            </div>
-
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div class="metric-compact"><div id="simMetric1" class="label">Tiempo de duplicación</div><div id="simTdOut" class="value mono text-indigo-700">—</div></div>
-              <div class="metric-compact"><div id="simMetric2" class="label">qGlc global aparente</div><div id="simQglcOut" class="value mono text-amber-700">—</div></div>
-              <div class="metric-compact"><div id="simMetric3" class="label">Yp/Glc aparente</div><div id="simYpsOut" class="value mono text-rose-700">—</div></div>
-              <div class="metric-compact"><div id="simMetric4" class="label">Glucosa residual final</div><div id="simGlcFinalOut" class="value mono text-cyan-700">—</div></div>
-            </div>
-
-            <section class="panel p-4">
-              <h3 id="simPlotTitle" class="text-lg font-black">Perfiles simulados</h3>
-              <p id="simPlotLead" class="subtle mt-1">El comportamiento es intencionalmente simple y sirve para explorar tendencias, no para predecir un proceso real.</p>
-              <div id="simPlot" class="plot-box mt-4"></div>
-            </section>
-          </div>
+          <div class="step"><div id="step1Badge" class="text-xs font-extrabold uppercase tracking-widest" style="color:var(--secondary-label);">Paso 1</div><div id="step1Title" class="mt-2 font-black" style="color:var(--sys-indigo);">Medir</div><p id="step1Copy" class="mt-2 text-sm" style="color:var(--secondary-label);">Obtener Xv, glucosa, lactato y producto en tiempos definidos.</p></div>
+          <div class="step"><div id="step2Badge" class="text-xs font-extrabold uppercase tracking-widest" style="color:var(--secondary-label);">Paso 2</div><div id="step2Title" class="mt-2 font-black" style="color:#0062CC;">Integrar</div><p id="step2Copy" class="mt-2 text-sm" style="color:var(--secondary-label);">Calcular IVCD con suma trapezoidal sobre los datos disponibles.</p></div>
+          <div class="step"><div id="step3Badge" class="text-xs font-extrabold uppercase tracking-widest" style="color:var(--secondary-label);">Paso 3</div><div id="step3Title" class="mt-2 font-black" style="color:#C75300;">Normalizar</div><p id="step3Copy" class="mt-2 text-sm" style="color:var(--secondary-label);">Obtener r, q y rendimientos para el tramo de interés.</p></div>
+          <div class="step"><div id="step4Badge" class="text-xs font-extrabold uppercase tracking-widest" style="color:var(--secondary-label);">Paso 4</div><div id="step4Title" class="mt-2 font-black" style="color:#C0003C;">Interpretar</div><p id="step4Copy" class="mt-2 text-sm" style="color:var(--secondary-label);">Comparar fases, condiciones o clones y revisar las limitaciones del modelo.</p></div>
         </div>
       </section>
 
-      <section class="panel p-5 sm:p-6" id="tabla">
+      <!-- ── Results table (MOVED HERE from seccion-2) ── -->
+      <section class="card p-5 sm:p-6" id="tabla">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 id="tableTitle" class="section-title">Tabla de resultados y variables primarias</h2>
             <p id="tableLead" class="section-copy mt-2 max-w-4xl">Además de los parámetros derivados, esta tabla incluye las variables medidas al inicio y al final de cada tramo: Xv, glucosa, lactato y producto.</p>
           </div>
-          <button id="csvBtn" class="hero-btn secondary" type="button">Descargar CSV</button>
+          <button id="csvBtn" class="btn btn-glass" type="button">Descargar CSV</button>
         </div>
-
         <div class="table-wrap mt-5">
           <table>
             <thead>
@@ -766,17 +927,81 @@
           </table>
         </div>
       </section>
-    </section>
+
+    </section><!-- end seccion-1 -->
+
+    <!-- ━━━━━━━━━━━━━━━ SIMULATION MODULE ━━━━━━━━━━━━━━━ -->
+    <section id="seccion-2" class="module-shell module-shell-sim space-y-6" style="display:none;">
+
+      <!-- Section band -->
+      <div class="section-band">
+        <div>
+          <div id="section2Chip" class="chip chip-blue">Sección 2 · Simulación</div>
+          <h2 id="section2Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">Simulador y exploración del comportamiento del cultivo</h2>
+          <p id="section2Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección usa un modelo simple para conectar los conceptos con un escenario dinámico. Está pensada para mover parámetros, observar tendencias y reforzar el significado biológico de $\mu$, IVCD, tasas específicas, tasas volumétricas y rendimientos.</p>
+        </div>
+      </div>
+
+      <!-- ── Simulator panel ── -->
+      <section class="card p-5 sm:p-6" id="simulador">
+        <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 id="simTitle" class="section-title">Simulador</h2>
+            <p id="simLead" class="section-copy mt-2 max-w-4xl">Esta sección no intenta ajustar un cultivo real. Su función es mostrar, de manera controlada, cómo cambian el crecimiento, el agotamiento de glucosa, la acumulación de producto y algunos parámetros derivados cuando se modifican ciertas hipótesis del sistema.</p>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-6 xl:grid-cols-[360px_1fr]">
+          <aside class="space-y-4">
+            <div class="control-card"><div class="slider-label"><span id="simMuText">$\mu_{max}$</span><span id="simMuLabel" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simMu" type="range" min="0.020" max="0.050" step="0.001" value="0.035" /><p id="simMuHelp" class="slider-help">Velocidad máxima en la fase de crecimiento.</p></div>
+            <div class="control-card"><div class="slider-label"><span id="simX0Text">$X_{v,0}$</span><span id="simX0Label" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simX0" type="range" min="0.2" max="1.0" step="0.05" value="0.3" /><p id="simX0Help" class="slider-help">Densidad celular viable inicial.</p></div>
+            <div class="control-card"><div class="slider-label"><span id="simXmaxText">$X_{v,max}$</span><span id="simXmaxLabel" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simXmax" type="range" min="6" max="20" step="1" value="10" /><p id="simXmaxHelp" class="slider-help">Capacidad de carga didáctica del sistema.</p></div>
+            <div class="control-card"><div class="slider-label"><span id="simGlcText">Glucosa inicial</span><span id="simGlc0Label" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simGlc0" type="range" min="6.0" max="8.0" step="0.1" value="7.0" /><p id="simGlcHelp" class="slider-help">Se convierte internamente a mM.</p></div>
+            <div class="control-card"><div class="slider-label"><span id="simYxsText">$Y_{X/Glc}$ aparente</span><span id="simYxsLabel" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simYxs" type="range" min="0.08" max="0.35" step="0.01" value="0.18" /><p id="simYxsHelp" class="slider-help">Más alto implica menos glucosa consumida por la misma ganancia de biomasa, dentro del modelo simplificado.</p></div>
+            <div class="control-card"><div class="slider-label"><span id="simQpText">$q_P$</span><span id="simQpLabel" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simQp" type="range" min="0.5" max="2.5" step="0.1" value="1.5" /><p id="simQpHelp" class="slider-help">Productividad específica supuesta.</p></div>
+            <button id="simResetBtn" class="btn btn-filled w-full" style="border-radius:14px;" type="button">Restaurar simulación</button>
+          </aside>
+
+          <div class="space-y-5">
+            <div class="card p-4">
+              <h3 id="simHowTitle" class="text-lg font-black">Cómo se calcula la simulación</h3>
+              <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                <div class="equation">$$\frac{dX_v}{dt}=\mu_{eff}X_v,\qquad \mu_{eff}=\mu_{max}\left(1-\frac{X_v}{X_{v,max}}\right)$$</div>
+                <div class="equation">$$\Delta Glc \approx \frac{\Delta X_v}{Y_{X/Glc}} + m_{Glc}\,IVCD_{\Delta t},\qquad \Delta P \approx q_P\,IVCD_{\Delta t}$$</div>
+              </div>
+              <p id="simHowCopy" class="subtle mt-4">El crecimiento se aproxima con una forma logística simple. El consumo de glucosa tiene dos componentes: uno asociado al aumento de biomasa y otro de mantenimiento. La formación de producto se calcula a partir de un qP constante. No se modelan cambios de viabilidad, cambios metabólicos de fase, consumo de múltiples sustratos, ni regulación fisiológica fina; esas omisiones son deliberadas para mantener la claridad didáctica.</p>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div class="metric-compact"><div id="simMetric1" class="label">Tiempo de duplicación</div><div id="simTdOut" class="value mono" style="color:var(--sys-indigo);">—</div></div>
+              <div class="metric-compact"><div id="simMetric2" class="label">qGlc global aparente</div><div id="simQglcOut" class="value mono" style="color:#C75300;">—</div></div>
+              <div class="metric-compact"><div id="simMetric3" class="label">Yp/Glc aparente</div><div id="simYpsOut" class="value mono" style="color:#C0003C;">—</div></div>
+              <div class="metric-compact"><div id="simMetric4" class="label">Glucosa residual final</div><div id="simGlcFinalOut" class="value mono" style="color:#0062CC;">—</div></div>
+            </div>
+
+            <section class="card p-4">
+              <h3 id="simPlotTitle" class="text-lg font-black">Perfiles simulados</h3>
+              <p id="simPlotLead" class="subtle mt-1">El comportamiento es intencionalmente simple y sirve para explorar tendencias, no para predecir un proceso real.</p>
+              <div id="simPlot" class="plot-box mt-4"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+    </section><!-- end seccion-2 -->
+
   </main>
 
-  <footer class="mt-12 border-t border-slate-200 bg-white/80" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
-    <div class="mx-auto max-w-7xl px-4 py-6 text-sm leading-6 text-slate-500 sm:px-6 lg:px-8">
+  <!-- ══ FOOTER ══ -->
+  <footer class="app-footer mt-12">
+    <div class="mx-auto max-w-7xl px-4 py-5 text-sm leading-6 sm:px-6 lg:px-8" style="color:var(--secondary-label);">
       <span id="footerText">Kinetic Drive está pensado para publicarse como GitHub Page.</span>
       <span class="mx-2">•</span>
       <a class="underline" href="https://ebalderasr.github.io/Kinetic-Drive/" target="_blank" rel="noopener noreferrer">ebalderasr.github.io/Kinetic-Drive</a>
     </div>
   </footer>
 
+  <!-- ══ JAVASCRIPT ══ -->
   <script>
     const MW_GLC = 180.16;
     const MW_LAC = 90.08;
@@ -826,7 +1051,7 @@
         plotXTitle: 'Día',
         plotYGrowth: 'Densidad celular viable',
         plotYIvcd: 'IVCD acumulada',
-        plotYSubs: 'Sustratos',
+        plotYSubs: 'Glucosa / Lactato (mM)',
         plotYProd: 'Producto',
         simXv: 'Xv',
         simGlc: 'Glucosa',
@@ -836,13 +1061,31 @@
         langBtn: 'ES / EN',
         linearBtn: 'Xv lineal',
         logBtn: 'Xv log',
-        simMuText: '$\mu_{max}$',
+        simMuText: '$\\mu_{max}$',
         simX0Text: '$X_{v,0}$',
         simXmaxText: '$X_{v,max}$',
         simYxsText: '$Y_{X/Glc}$ aparente',
         simQpText: '$q_P$',
         continuous: '<strong>Forma continua</strong>',
-        discrete: '<strong>Con datos discretos</strong>'
+        discrete: '<strong>Con datos discretos</strong>',
+        intervalSelectorTitle: 'Intervalo de cálculo',
+        intervalSelectorDesc: 'Selecciona el tramo de tiempo para calcular μ, IVCD, tasas específicas y rendimientos.',
+        startRowLabel: 'Inicio',
+        endRowLabel: 'Fin',
+        moduleTeaching: 'Enseñanza',
+        moduleSimulation: 'Simulación',
+        tabTeachingTooltip: 'Explicación y ejemplo con datos reales',
+        tabSimulationTooltip: 'Simulador con modelo logístico',
+        mLabelRange: 'Tramo',
+        mLabelDt: 'Δt',
+        mLabelMu: '&mu;',
+        mLabelIvcd: 'IVCD',
+        mLabelQglc: 'qGlc',
+        mLabelQLac: 'qLac',
+        mLabelQp: 'qP',
+        mLabelDGlc: 'ΔGlucosa',
+        mLabelDLac: 'ΔLactato',
+        mLabelDProd: 'ΔProducto'
       },
       en: {
         title: 'Kinetic Drive',
@@ -861,7 +1104,7 @@
         plotXTitle: 'Day',
         plotYGrowth: 'Viable cell density',
         plotYIvcd: 'Accumulated IVCD',
-        plotYSubs: 'Substrates',
+        plotYSubs: 'Glucose / Lactate (mM)',
         plotYProd: 'Product',
         simXv: 'Xv',
         simGlc: 'Glucose',
@@ -871,7 +1114,7 @@
         langBtn: 'ES / EN',
         linearBtn: 'Linear Xv',
         logBtn: 'Log Xv',
-        simMuText: '$\mu_{max}$',
+        simMuText: '$\\mu_{max}$',
         simX0Text: '$X_{v,0}$',
         simXmaxText: '$X_{v,max}$',
         simYxsText: 'Apparent $Y_{X/Glc}$',
@@ -884,7 +1127,7 @@
         navExplanation: 'Explanation',
         navSimulator: 'Simulator',
         repoBtn: 'Repository',
-        section1Chip: 'Section 1 · Explanation',
+        section1Chip: 'Section 1 · Teaching',
         section1Title: 'Foundations, formulas, and worked example',
         section1Lead: 'This section is designed to show where the parameters come from, how they are calculated from discrete data, and how they are interpreted in a CHO culture before moving to the simulator.',
         introTitle: 'What this page does',
@@ -896,10 +1139,14 @@
         plot2Lead: 'When you hover over either plot, the time reference is synchronized across both.',
         mLabelRange: 'Interval',
         mLabelDt: 'Δt',
-        mLabelMu: 'μ',
-        mLabelIvcd: 'IVCDΔ',
+        mLabelMu: '&mu;',
+        mLabelIvcd: 'IVCD',
         mLabelQglc: 'qGlc',
+        mLabelQLac: 'qLac',
         mLabelQp: 'qP',
+        mLabelDGlc: 'ΔGlucose',
+        mLabelDLac: 'ΔLactate',
+        mLabelDProd: 'ΔProduct',
         formulaMainTitle: 'How each parameter is calculated',
         formulaMainLead: 'Each block first shows a continuous form, derived from the balance or the formal definition of the parameter, and then a discrete form, which is the one actually used when working with digital sampling data.',
         formulaChip: 'Continuous version + discrete version',
@@ -936,9 +1183,9 @@
         step4Badge: 'Step 4',
         step4Title: 'Interpret',
         step4Copy: 'Compare phases, conditions, or clones and review the model limitations.',
-        section2Chip: 'Section 2 · Simulator',
+        section2Chip: 'Section 2 · Simulation',
         section2Title: 'Simulator and culture behavior exploration',
-        section2Lead: 'This section uses a simple model to connect the concepts with a dynamic scenario. It is meant for moving parameters, observing trends, and reinforcing the biological meaning of $\mu$, IVCD, specific rates, volumetric rates, and yields.',
+        section2Lead: 'This section uses a simple model to connect the concepts with a dynamic scenario. It is meant for moving parameters, observing trends, and reinforcing the biological meaning of $\\mu$, IVCD, specific rates, volumetric rates, and yields.',
         simTitle: 'Simulator',
         simLead: 'This section does not attempt to fit a real culture. Its purpose is to show, in a controlled way, how growth, glucose depletion, product accumulation, and some derived parameters change when certain assumptions of the system are modified.',
         simMuHelp: 'Maximum rate during the growth phase.',
@@ -979,7 +1226,15 @@
         thQp: 'qP',
         thYx: 'Yx/Glc',
         thYp: 'Yp/Glc',
-        footerText: 'Kinetic Drive is intended to be published as a GitHub Page.'
+        footerText: 'Kinetic Drive is intended to be published as a GitHub Page.',
+        intervalSelectorTitle: 'Calculation interval',
+        intervalSelectorDesc: 'Select the time range to calculate μ, IVCD, specific rates, and yields.',
+        startRowLabel: 'Start',
+        endRowLabel: 'End',
+        moduleTeaching: 'Teaching',
+        moduleSimulation: 'Simulation',
+        tabTeachingTooltip: 'Explanation and worked example with real data',
+        tabSimulationTooltip: 'Simulator with logistic growth model'
       }
     };
 
@@ -1025,8 +1280,8 @@
         rLac: dLac / dtD,
         qLac: dLac / ivcd,
         qP: dP / ivcd,
-        yxGlc: (b.xv - a.xv) / dGlc,
-        ypGlc: dP / dGlc
+        yxGlc: dGlc !== 0 ? (b.xv - a.xv) / dGlc : null,
+        ypGlc: dGlc !== 0 ? dP / dGlc : null
       };
     }
 
@@ -1059,13 +1314,20 @@
 
     function renderDerivedText() {
       const r = activeInterval();
-      el('selectedRangeOut').textContent = r.label;
+      const ivcdUnits = currentLang === 'es' ? '×10⁶ cél·d/mL' : '×10⁶ cells·d/mL';
+      if (el('selectedRangeOut')) el('selectedRangeOut').textContent = r.label;
       el('deltaTimeOut').textContent = `${fmt(r.dtD, 2)} d`;
-      el('muOut').textContent = `${fmt(r.mu, 4)} h⁻¹`;
-      el('ivcdOutCompact').textContent = fmt(r.ivcd, 3);
-      el('qGlcOut').textContent = `${fmt(r.qGlc, 3)} pmol/cell/day`;
-      el('qPOut').textContent = `${fmt(r.qP, 3)} pg/cell/day`;
-      el('muExplain').innerHTML = `μ = [ln(${fmt(r.x2, 3)}) − ln(${fmt(r.x1, 3)})] / ${fmt(r.dtH, 0)} = <strong>${fmt(r.mu, 4)} h⁻¹</strong>`;
+      el('muOut').innerHTML = `${fmt(r.mu, 4)} h⁻¹<br><span style="font-size:0.82em;opacity:0.6;">${fmt(r.mu * 24, 3)} d⁻¹</span>`;
+      el('ivcdOutCompact').textContent = `${fmt(r.ivcd, 3)} ${ivcdUnits}`;
+      el('qGlcOut').textContent = `${fmt(r.qGlc, 3)} pmol/cel/d`;
+      el('qLacOut').textContent = `${fmt(r.qLac, 3)} pmol/cel/d`;
+      el('qPOut').textContent = `${fmt(r.qP, 3)} pg/cel/d`;
+      if (el('dGlcOut')) el('dGlcOut').textContent = `${fmt(r.glc1 - r.glc2, 3)} mM`;
+      if (el('dLacOut')) el('dLacOut').textContent = `${fmt(r.lac2 - r.lac1, 3)} mM`;
+      if (el('dProdOut')) el('dProdOut').textContent = `${fmt(r.p2 - r.p1, 3)} mg/L`;
+      el('muExplain').innerHTML =
+        `μ = [ln(${fmt(r.x2, 3)}) − ln(${fmt(r.x1, 3)})] / ${fmt(r.dtH, 0)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>` +
+        `μ = [ln(${fmt(r.x2, 3)}) − ln(${fmt(r.x1, 3)})] / ${fmt(r.dtD, 2)} d = <strong>${fmt(r.mu * 24, 3)} d⁻¹</strong>`;
       el('ivcdExplain').innerHTML = `IVCDΔ = ${currentLang === 'es' ? 'suma trapezoidal' : 'trapezoidal sum'} ${currentLang === 'es' ? 'entre' : 'between'} ${t('dayLabel').toLowerCase()} ${fmt(r.t1, 0)} ${currentLang === 'es' ? 'y' : 'and'} ${t('dayLabel').toLowerCase()} ${fmt(r.t2, 0)} = <strong>${fmt(r.ivcd, 3)}</strong> ×10⁶ ${currentLang === 'es' ? 'cél·día/mL' : 'cells·day/mL'}`;
       el('qGlcExplain').innerHTML = `rGlc = (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) / ${fmt(r.dtD, 2)} = <strong>${fmt(r.rGlc, 3)} mM/day</strong><br>qGlc = (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qGlc, 3)} pmol/cell/day</strong>`;
       el('qPExplain').innerHTML = `qP = (${fmt(r.p2, 3)} − ${fmt(r.p1, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qP, 3)} pg/cell/day</strong>`;
@@ -1089,18 +1351,31 @@
       return [{ type: 'line', x0: day, x1: day, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#334155', width: 1.5, dash: 'dot' } }];
     }
 
+    function metIntervalShape() {
+      return {
+        type: 'rect',
+        x0: rawData[activeStart].day,
+        x1: rawData[activeEnd].day,
+        y0: 0, y1: 1,
+        xref: 'x', yref: 'paper',
+        fillcolor: 'rgba(88,86,214,0.10)',
+        line: { color: '#5856D6', width: 1.5, dash: 'dash' },
+        layer: 'below'
+      };
+    }
+
     function nearestDayFromEvent(e) {
       return e && e.points && e.points.length ? e.points[0].x : null;
     }
 
     function setSharedHover(day) {
-      Plotly.relayout('growthPlotData', { shapes: hoverLine(day) });
-      Plotly.relayout('metPlotData', { shapes: hoverLine(day) });
+      Plotly.relayout('growthPlotData', { shapes: hoverLine(day), transition: { duration: 0 } });
+      Plotly.relayout('metPlotData', { shapes: [metIntervalShape(), ...hoverLine(day)], transition: { duration: 0 } });
     }
 
     function clearSharedHover() {
-      Plotly.relayout('growthPlotData', { shapes: [] });
-      Plotly.relayout('metPlotData', { shapes: [] });
+      Plotly.relayout('growthPlotData', { shapes: [], transition: { duration: 0 } });
+      Plotly.relayout('metPlotData', { shapes: [metIntervalShape()], transition: { duration: 0 } });
     }
 
     function attachHoverSync() {
@@ -1129,38 +1404,59 @@
     }
 
     function drawDataPlots(sharedDay = null) {
-      const poly = intervalPolygon();
+      // Reset sync flags so attachHoverSync re-binds after each redraw
+      const gEl = el('growthPlotData');
+      const mEl = el('metPlotData');
+      if (gEl) gEl.__syncBound = false;
+      if (mEl) mEl.__syncBound = false;
+
+      const isLog = growthScale === 'log';
+      // In log mode: skip polygon (contains y=0 → log undefined) and remove fill-to-zero
+      const poly = isLog ? { xs: [], ys: [] } : intervalPolygon();
       const growthShapes = sharedDay === null ? [] : hoverLine(sharedDay);
-      const metShapes = sharedDay === null ? [] : hoverLine(sharedDay);
+      // metPlot always shows the interval rect; hover line is added on top
+      const metShapes = sharedDay === null
+        ? [metIntervalShape()]
+        : [metIntervalShape(), ...hoverLine(sharedDay)];
+
+      // Log range: compute decade bounds from data so ticks are 0.1 → 1 → 10 etc.
+      const xvValues = rawData.map(d => d.xv).filter(v => v > 0);
+      const logRangeMin = Math.floor(Math.log10(Math.min(...xvValues)));
+      const logRangeMax = Math.ceil(Math.log10(Math.max(...xvValues)));
 
       Plotly.newPlot('growthPlotData', [
-        { x: rawData.map(d => d.day), y: rawData.map(d => d.xv), type: 'scatter', mode: 'lines+markers', name: t('traceXv'), line: { color: '#059669', width: 3 }, marker: { size: 8, color: '#065f46' }, fill: 'tozeroy', fillcolor: 'rgba(16,185,129,0.12)', hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceXv')} %{y:.3f}<extra></extra>` },
-        { x: poly.xs, y: poly.ys, type: 'scatter', mode: 'lines', name: t('traceRange'), fill: 'toself', fillcolor: 'rgba(67,56,202,0.18)', line: { color: '#4338ca', width: 2, dash: 'dash' }, hovertemplate: `${t('traceRange')}<extra></extra>` },
-        { x: rawData.map(d => d.day), y: rawData.map((d, i) => { if (i === 0) return 0; let total = 0; for (let j = 0; j < i; j++) total += ((rawData[j].xv + rawData[j + 1].xv) / 2) * (rawData[j + 1].day - rawData[j].day); return total; }), type: 'scatter', mode: 'lines+markers', name: t('traceIvcdAcc'), yaxis: 'y2', line: { color: '#4f46e5', width: 3, dash: 'dot' }, marker: { size: 6, color: '#4f46e5' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceIvcdAcc')} %{y:.3f}<extra></extra>` }
+        { x: rawData.map(d => d.day), y: rawData.map(d => d.xv), type: 'scatter', mode: 'lines+markers', name: t('traceXv'), line: { color: '#34C759', width: 3 }, marker: { size: 8, color: '#1A8A3A' }, fill: isLog ? 'none' : 'tozeroy', fillcolor: 'rgba(52,199,89,0.1)', hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceXv')} %{y:.3f}<extra></extra>` },
+        { x: poly.xs, y: poly.ys, type: 'scatter', mode: 'lines', name: t('traceRange'), fill: 'toself', fillcolor: 'rgba(88,86,214,0.15)', line: { color: '#5856D6', width: 2, dash: 'dash' }, hovertemplate: `${t('traceRange')}<extra></extra>` },
+        { x: rawData.map(d => d.day), y: rawData.map((d, i) => { if (i === 0) return 0; let total = 0; for (let j = 0; j < i; j++) total += ((rawData[j].xv + rawData[j + 1].xv) / 2) * (rawData[j + 1].day - rawData[j].day); return total; }), type: 'scatter', mode: 'lines+markers', name: t('traceIvcdAcc'), yaxis: 'y2', line: { color: '#5856D6', width: 3, dash: 'dot' }, marker: { size: 6, color: '#5856D6' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceIvcdAcc')} %{y:.3f}<extra></extra>` }
       ], {
         margin: { l: 65, r: 70, t: 10, b: 55 },
         paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(248,250,252,1)',
+        plot_bgcolor: 'rgba(242,242,247,0.6)',
         hovermode: 'x unified',
         legend: { orientation: 'h', y: 1.14, x: 0 },
-        xaxis: { title: t('plotXTitle'), gridcolor: '#e2e8f0' },
-        yaxis: { title: t('plotYGrowth'), type: growthScale, rangemode: 'tozero', gridcolor: '#e2e8f0' },
+        xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
+        yaxis: {
+          title: t('plotYGrowth'),
+          type: growthScale,
+          ...(isLog ? { range: [logRangeMin, logRangeMax] } : { rangemode: 'tozero' }),
+          gridcolor: 'rgba(60,60,67,0.1)'
+        },
         yaxis2: { title: t('plotYIvcd'), overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false },
         shapes: growthShapes
       }, { responsive: true, displaylogo: false });
 
       Plotly.newPlot('metPlotData', [
-        { x: rawData.map(d => d.day), y: rawData.map(d => d.glc_mM), type: 'scatter', mode: 'lines+markers', name: t('traceGlc'), line: { color: '#d97706', width: 3 }, marker: { size: 8, color: '#b45309' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceGlc')} %{y:.3f} mM<extra></extra>` },
-        { x: rawData.map(d => d.day), y: rawData.map(d => d.lac_mM), type: 'scatter', mode: 'lines+markers', name: t('traceLac'), line: { color: '#0ea5e9', width: 3 }, marker: { size: 8, color: '#0369a1' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceLac')} %{y:.3f} mM<extra></extra>` },
-        { x: rawData.map(d => d.day), y: rawData.map(d => d.product_mgL), type: 'scatter', mode: 'lines+markers', name: t('traceProd'), yaxis: 'y2', line: { color: '#e11d48', width: 3 }, marker: { size: 8, color: '#be123c' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceProd')} %{y:.3f} mg/L<extra></extra>` }
+        { x: rawData.map(d => d.day), y: rawData.map(d => d.glc_mM), type: 'scatter', mode: 'lines+markers', name: t('traceGlc'), line: { color: '#FF9500', width: 3 }, marker: { size: 8, color: '#C75300' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceGlc')} %{y:.3f} mM<extra></extra>` },
+        { x: rawData.map(d => d.day), y: rawData.map(d => d.lac_mM), type: 'scatter', mode: 'lines+markers', name: t('traceLac'), line: { color: '#5AC8FA', width: 3 }, marker: { size: 8, color: '#0062CC' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceLac')} %{y:.3f} mM<extra></extra>` },
+        { x: rawData.map(d => d.day), y: rawData.map(d => d.product_mgL), type: 'scatter', mode: 'lines+markers', name: t('traceProd'), yaxis: 'y2', line: { color: '#FF3B30', width: 3 }, marker: { size: 8, color: '#C0003C' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceProd')} %{y:.3f} mg/L<extra></extra>` }
       ], {
         margin: { l: 65, r: 70, t: 10, b: 55 },
         paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(248,250,252,1)',
+        plot_bgcolor: 'rgba(242,242,247,0.6)',
         hovermode: 'x unified',
         legend: { orientation: 'h', y: 1.14, x: 0 },
-        xaxis: { title: t('plotXTitle'), gridcolor: '#e2e8f0' },
-        yaxis: { title: t('plotYSubs'), rangemode: 'tozero', gridcolor: '#e2e8f0' },
+        xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
+        yaxis: { title: t('plotYSubs'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)' },
         yaxis2: { title: t('plotYProd'), overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false },
         shapes: metShapes
       }, { responsive: true, displaylogo: false }).then(attachHoverSync);
@@ -1212,6 +1508,7 @@
       setSelectionModeText();
       renderDerivedText();
       drawDataPlots();
+      renderIntervalSelector();
     }
 
     function updateFromCustom() {
@@ -1258,13 +1555,18 @@
         const x = X[i];
         const glc = Glc[i];
         const active = glc > 1e-9;
-        const muEff = active ? Math.max(mu * (1 - x / xmax), 0) : 0;
-        const xNext = active ? Math.min(x * Math.exp(muEff * dtH), xmax) : x;
-        const dX = Math.max(xNext - x, 0);
+        const muEffMax = active ? Math.max(mu * (1 - x / xmax), 0) : 0;
+        // Calculate uncapped growth and glucose requirement
+        const xNextUncapped = active ? Math.min(x * Math.exp(muEffMax * dtH), xmax) : x;
+        const dXUncapped = Math.max(xNextUncapped - x, 0);
+        const ivStepUncapped = ((x + xNextUncapped) / 2) * dtD;
+        const dGlcNeeded = (yxs > 0 ? dXUncapped / yxs : 0) + 0.05 * ivStepUncapped;
+        // Scale down growth proportionally if glucose is insufficient
+        const glucoseScale = (active && dGlcNeeded > glc) ? glc / dGlcNeeded : 1;
+        const dX = dXUncapped * glucoseScale;
+        const xNext = Math.min(x + dX, xmax);
         const ivStep = ((x + xNext) / 2) * dtD;
-        const dGlcGrowth = yxs > 0 ? dX / yxs : 0;
-        const maintenance = 0.05 * ivStep;
-        const dGlc = active ? Math.min(glc, dGlcGrowth + maintenance) : 0;
+        const dGlc = active ? Math.min(glc, (yxs > 0 ? dX / yxs : 0) + 0.05 * ivStep) : 0;
         const dP = active ? qp * ivStep : 0;
         timeDays.push((i + 1) / 24);
         X.push(xNext);
@@ -1276,31 +1578,177 @@
       const totalGlc = glc0 - Glc[Glc.length - 1];
       const totalIV = IV[IV.length - 1];
       const totalP = P[P.length - 1];
-      el('simTdOut').textContent = `${fmt(Math.log(2) / mu, 1)} h`;
+      const muEffInit = Math.max(mu * (1 - x0 / xmax), 0);
+      el('simTdOut').textContent = muEffInit > 0 ? `${fmt(Math.log(2) / muEffInit, 1)} h` : '—';
       el('simQglcOut').textContent = `${fmt(totalGlc / totalIV, 2)} pmol/cell/day`;
       el('simYpsOut').textContent = fmt(totalP / totalGlc, 2);
       el('simGlcFinalOut').textContent = `${fmt(Glc[Glc.length - 1], 2)} mM`;
 
       Plotly.newPlot('simPlot', [
-        { x: timeDays, y: X, type: 'scatter', mode: 'lines', name: t('simXv'), line: { color: '#059669', width: 3 }, fill: 'tozeroy', fillcolor: 'rgba(16,185,129,0.12)', hovertemplate: `${t('sampleHover')} %{x:.2f}<br>${t('simXv')} %{y:.2f}<extra></extra>` },
-        { x: timeDays, y: Glc, type: 'scatter', mode: 'lines', name: t('simGlc'), yaxis: 'y2', line: { color: '#d97706', width: 3 }, hovertemplate: `${t('sampleHover')} %{x:.2f}<br>${t('simGlc')} %{y:.2f} mM<extra></extra>` },
-        { x: timeDays, y: P, type: 'scatter', mode: 'lines', name: t('simProd'), yaxis: 'y2', line: { color: '#e11d48', width: 3, dash: 'dot' }, hovertemplate: `${t('sampleHover')} %{x:.2f}<br>${t('simProd')} %{y:.2f} mg/L<extra></extra>` }
+        { x: timeDays, y: X, type: 'scatter', mode: 'lines', name: t('simXv'), line: { color: '#34C759', width: 3 }, fill: 'tozeroy', fillcolor: 'rgba(52,199,89,0.1)', hovertemplate: `${t('sampleHover')} %{x:.2f}<br>${t('simXv')} %{y:.2f}<extra></extra>` },
+        { x: timeDays, y: Glc, type: 'scatter', mode: 'lines', name: t('simGlc'), yaxis: 'y2', line: { color: '#FF9500', width: 3 }, hovertemplate: `${t('sampleHover')} %{x:.2f}<br>${t('simGlc')} %{y:.2f} mM<extra></extra>` },
+        { x: timeDays, y: P, type: 'scatter', mode: 'lines', name: t('simProd'), yaxis: 'y2', line: { color: '#FF3B30', width: 3, dash: 'dot' }, hovertemplate: `${t('sampleHover')} %{x:.2f}<br>${t('simProd')} %{y:.2f} mg/L<extra></extra>` }
       ], {
         margin: { l: 72, r: 95, t: 10, b: 55 },
         paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(248,250,252,1)',
+        plot_bgcolor: 'rgba(242,242,247,0.6)',
         hovermode: 'x unified',
         legend: { orientation: 'h', y: 1.14, x: 0 },
-        xaxis: { title: t('plotXTitle'), gridcolor: '#e2e8f0' },
-        yaxis: { title: t('simXvTitle'), rangemode: 'tozero', gridcolor: '#e2e8f0', automargin: true },
+        xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
+        yaxis: { title: t('simXvTitle'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)', automargin: true },
         yaxis2: { title: t('simRightTitle'), overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false, automargin: true }
       }, { responsive: true, displaylogo: false });
     }
 
+    // ── Module switching ──
+    let activeModule = 'teaching';
+    function switchModule(name) {
+      activeModule = name;
+      const t1 = el('seccion-1');
+      const t2 = el('seccion-2');
+      const btn1 = el('tabTeaching');
+      const btn2 = el('tabSimulation');
+      if (t1) t1.style.display = name === 'teaching' ? '' : 'none';
+      if (t2) t2.style.display = name === 'simulation' ? '' : 'none';
+      if (btn1) btn1.classList.toggle('active', name === 'teaching');
+      if (btn2) btn2.classList.toggle('active', name === 'simulation');
+      // Update scale toggle button visual state
+      if (name === 'teaching') {
+        const linBtn = el('dataLinearBtn');
+        const logBtn = el('dataLogBtn');
+        if (linBtn && logBtn) {
+          linBtn.classList.toggle('btn-scale-active', growthScale === 'linear');
+          logBtn.classList.toggle('btn-scale-active', growthScale === 'log');
+        }
+      }
+    }
+
+    // ── Interval selector rendering ──
+    function renderIntervalSelector() {
+      const n = rawData.length;
+
+      // Update range track
+      const rangeTrack = el('timelineRangeTrack');
+      if (rangeTrack) {
+        const leftPct = (activeStart / (n - 1)) * 100;
+        const rightPct = (activeEnd / (n - 1)) * 100;
+        rangeTrack.style.left = leftPct + '%';
+        rangeTrack.style.width = (rightPct - leftPct) + '%';
+      }
+
+      // Render node circles
+      const nodeRow = el('timelineNodeRow');
+      if (nodeRow) {
+        nodeRow.innerHTML = rawData.map((d, idx) => {
+          const isStart = idx === activeStart;
+          const isEnd = idx === activeEnd;
+          const inRange = idx > activeStart && idx < activeEnd;
+          let bg, border, color, scale = '';
+          if (isStart) { bg='#5856D6'; border='#5856D6'; color='white'; scale='transform:scale(1.2);'; }
+          else if (isEnd) { bg='#3634A3'; border='#3634A3'; color='white'; scale='transform:scale(1.2);'; }
+          else if (inRange) { bg='rgba(88,86,214,0.12)'; border='rgba(88,86,214,0.4)'; color='#5856D6'; }
+          else { bg='white'; border='rgba(0,0,0,0.12)'; color='rgba(60,60,67,0.5)'; }
+          return `<div onclick="handleTimelineClick(${idx})" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 2px 8px rgba(0,0,0,0.1);border:2px solid ${border};background:${bg};color:${color};${scale}">${d.day}</div>`;
+        }).join('');
+      }
+
+      // Render timeline labels
+      const labelRow = el('timelineLabelRow');
+      if (labelRow) {
+        labelRow.innerHTML = rawData.map((d, idx) => {
+          const isActive = idx === activeStart || idx === activeEnd;
+          return `<span style="font-size:11px;font-weight:${isActive?'700':'500'};color:${isActive?'#5856D6':'rgba(60,60,67,0.4)'};text-align:center;line-height:1.2;">${t('dayLabel')}<br>${d.day}</span>`;
+        }).join('');
+      }
+
+      // Render start buttons
+      const startBtnRow = el('startBtnRow');
+      if (startBtnRow) {
+        startBtnRow.innerHTML = rawData.slice(0, -1).map((d, idx) => {
+          const isActive = idx === activeStart;
+          const sty = isActive
+            ? 'background:#5856D6;color:white;border:1px solid #5856D6;box-shadow:0 3px 10px rgba(88,86,214,0.35);'
+            : 'background:rgba(255,255,255,0.85);color:rgba(0,0,0,0.7);border:1px solid rgba(0,0,0,0.1);';
+          return `<button onclick="setIntervalStart(${idx})" style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${d.day}</button>`;
+        }).join('');
+      }
+
+      // Render end buttons
+      const endBtnRow = el('endBtnRow');
+      if (endBtnRow) {
+        endBtnRow.innerHTML = rawData.slice(1).map((d, idx) => {
+          const realIdx = idx + 1;
+          const isActive = realIdx === activeEnd;
+          const isDisabled = realIdx <= activeStart;
+          let sty;
+          if (isActive) sty = 'background:#3634A3;color:white;border:1px solid #3634A3;box-shadow:0 3px 10px rgba(54,52,163,0.35);';
+          else if (isDisabled) sty = 'background:transparent;color:rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.05);cursor:not-allowed;opacity:0.5;';
+          else sty = 'background:rgba(255,255,255,0.85);color:rgba(0,0,0,0.7);border:1px solid rgba(0,0,0,0.1);';
+          return `<button onclick="setIntervalEnd(${realIdx})" ${isDisabled?'disabled':''} style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${d.day}</button>`;
+        }).join('');
+      }
+
+      // Update scale toggle button active state
+      const linBtn = el('dataLinearBtn');
+      const logBtn = el('dataLogBtn');
+      if (linBtn && logBtn) {
+        linBtn.classList.toggle('btn-scale-active', growthScale === 'linear');
+        logBtn.classList.toggle('btn-scale-active', growthScale === 'log');
+      }
+    }
+
+    function handleTimelineClick(idx) {
+      if (idx === 0 || (idx < activeEnd && idx !== activeEnd)) {
+        activeStart = idx;
+        if (activeEnd <= activeStart) activeEnd = Math.min(activeStart + 1, rawData.length - 1);
+      } else {
+        activeEnd = idx;
+        if (activeStart >= activeEnd) activeStart = Math.max(0, activeEnd - 1);
+      }
+      renderIntervalSelector();
+      redrawExplanation();
+    }
+
+    function setIntervalStart(idx) {
+      activeStart = idx;
+      if (activeEnd <= activeStart) activeEnd = Math.min(activeStart + 1, rawData.length - 1);
+      renderIntervalSelector();
+      redrawExplanation();
+    }
+
+    function setIntervalEnd(idx) {
+      if (idx <= activeStart) return;
+      activeEnd = idx;
+      renderIntervalSelector();
+      redrawExplanation();
+    }
+
+    // ── Translations ──
     function applyTranslations() {
       document.documentElement.lang = currentLang;
       document.title = t('title');
-      const ids = ['brandTag','heroTitle','heroLead','navExplanation','navSimulator','repoBtn','section1Chip','section1Title','section1Lead','introTitle','introCopy','intervalExampleNote','plot1Title','plot1Lead','plot2Title','plot2Lead','mLabelRange','mLabelDt','mLabelMu','mLabelIvcd','mLabelQglc','mLabelQp','formulaMainTitle','formulaMainLead','formulaChip','muTitle','muWarn','muLead','ivcdTitle','ivcdWarn','ivcdLead','ivcdRef','qglcTitle','qglcWarn','qglcLead','qpTitle','qpWarn','qpLead','yieldTitle','yieldWarn','yieldLead','apparentTitle','apparentCopy','realTitle','realCopy','stepsTitle','step1Badge','step1Title','step1Copy','step2Badge','step2Title','step2Copy','step3Badge','step3Title','step3Copy','step4Badge','step4Title','step4Copy','section2Chip','section2Title','section2Lead','simTitle','simLead','simMuHelp','simX0Help','simXmaxHelp','simGlcText','simGlcHelp','simYxsHelp','simQpHelp','simResetBtn','simHowTitle','simHowCopy','simMetric1','simMetric2','simMetric3','simMetric4','simPlotTitle','simPlotLead','tableTitle','tableLead','csvBtn','thInterval','thXv1','thXv2','thGlc1','thGlc2','thLac1','thLac2','thP1','thP2','thDt','thMu','thIvcd','thRglc','thQglc','thRlac','thQlac','thQp','thYx','thYp','footerText'];
+      const ids = [
+        'brandTag','heroTitle','heroLead','repoBtn',
+        'section1Chip','section1Title','section1Lead',
+        'intervalSelectorTitle','intervalSelectorDesc','intervalExampleNote',
+        'startRowLabel','endRowLabel',
+        'plot1Title','plot1Lead','plot2Title','plot2Lead',
+        'mLabelDt','mLabelMu','mLabelIvcd','mLabelQglc','mLabelQLac','mLabelQp',
+        'formulaMainTitle','formulaMainLead','formulaChip',
+        'muTitle','muWarn','muLead','ivcdTitle','ivcdWarn','ivcdLead','ivcdRef',
+        'qglcTitle','qglcWarn','qglcLead','qpTitle','qpWarn','qpLead',
+        'yieldTitle','yieldWarn','yieldLead','apparentTitle','apparentCopy','realTitle','realCopy',
+        'stepsTitle','step1Badge','step1Title','step1Copy','step2Badge','step2Title','step2Copy',
+        'step3Badge','step3Title','step3Copy','step4Badge','step4Title','step4Copy',
+        'section2Chip','section2Title','section2Lead',
+        'simTitle','simLead','simMuHelp','simX0Help','simXmaxHelp','simGlcText','simGlcHelp',
+        'simYxsHelp','simQpHelp','simResetBtn','simHowTitle','simHowCopy',
+        'simMetric1','simMetric2','simMetric3','simMetric4','simPlotTitle','simPlotLead',
+        'tableTitle','tableLead','csvBtn',
+        'thInterval','thXv1','thXv2','thGlc1','thGlc2','thLac1','thLac2',
+        'thP1','thP2','thDt','thMu','thIvcd','thRglc','thQglc','thRlac','thQlac','thQp','thYx','thYp',
+        'footerText'
+      ];
       ids.forEach(id => {
         const node = el(id);
         if (node) node.innerHTML = t(id);
@@ -1308,22 +1756,29 @@
       el('langBtn').textContent = t('langBtn');
       el('dataLinearBtn').textContent = t('linearBtn');
       el('dataLogBtn').textContent = t('logBtn');
+      // Update tab labels
+      const tl = el('tabTeachingLabel');
+      if (tl) tl.textContent = t('moduleTeaching');
+      const sl = el('tabSimulationLabel');
+      if (sl) sl.textContent = t('moduleSimulation');
       el('simMuText').innerHTML = t('simMuText');
       el('simX0Text').innerHTML = t('simX0Text');
       el('simXmaxText').innerHTML = t('simXmaxText');
       el('simYxsText').innerHTML = t('simYxsText');
       el('simQpText').innerHTML = t('simQpText');
-      ['continuous1','continuous2','continuous3','continuous4','continuous5'].forEach(id => el(id).innerHTML = t('continuous'));
-      ['discrete1','discrete2','discrete3','discrete4','discrete5'].forEach(id => el(id).innerHTML = t('discrete'));
+      ['continuous1','continuous2','continuous3','continuous4','continuous5'].forEach(id => { const n = el(id); if(n) n.innerHTML = t('continuous'); });
+      ['discrete1','discrete2','discrete3','discrete4','discrete5'].forEach(id => { const n = el(id); if(n) n.innerHTML = t('discrete'); });
       populateControls();
       setSelectionModeText();
       fillTable();
       renderDerivedText();
       drawDataPlots();
       runSimulator();
+      renderIntervalSelector();
       if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
     }
 
+    // ── Init ──
     function init() {
       if (el('pairSelect')) {
         el('pairSelect').addEventListener('change', (e) => {
@@ -1338,10 +1793,26 @@
       }
       if (el('startSelect')) el('startSelect').addEventListener('change', updateFromCustom);
       if (el('endSelect')) el('endSelect').addEventListener('change', updateFromCustom);
-      el('dataLinearBtn').addEventListener('click', () => { growthScale = 'linear'; drawDataPlots(); });
-      el('dataLogBtn').addEventListener('click', () => { growthScale = 'log'; drawDataPlots(); });
+
+      el('dataLinearBtn').addEventListener('click', () => {
+        growthScale = 'linear';
+        el('dataLinearBtn').classList.add('btn-scale-active');
+        el('dataLogBtn').classList.remove('btn-scale-active');
+        drawDataPlots();
+      });
+      el('dataLogBtn').addEventListener('click', () => {
+        growthScale = 'log';
+        el('dataLogBtn').classList.add('btn-scale-active');
+        el('dataLinearBtn').classList.remove('btn-scale-active');
+        drawDataPlots();
+      });
+
       el('csvBtn').addEventListener('click', downloadCSV);
-      el('langBtn').addEventListener('click', () => { currentLang = currentLang === 'es' ? 'en' : 'es'; applyTranslations(); });
+      el('langBtn').addEventListener('click', () => {
+        currentLang = currentLang === 'es' ? 'en' : 'es';
+        applyTranslations();
+      });
+
       ['simMu','simX0','simXmax','simGlc0','simYxs','simQp'].forEach(id => el(id).addEventListener('input', runSimulator));
       el('simResetBtn').addEventListener('click', () => {
         el('simMu').value = simDefaults.mu;
@@ -1352,12 +1823,15 @@
         el('simQp').value = simDefaults.qp;
         runSimulator();
       });
+
+      switchModule('teaching');
       populateControls();
       fillTable();
       setSelectionModeText();
       renderDerivedText();
       drawDataPlots();
       runSimulator();
+      renderIntervalSelector();
       if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
     }
 
