@@ -928,6 +928,17 @@
         </div>
       </section>
 
+      <!-- ── Author footer ── -->
+      <div class="flex items-center justify-center gap-3 pt-2 pb-1">
+        <div style="height:1px;flex:1;background:var(--separator);border-radius:1px;"></div>
+        <div class="text-center" style="color:var(--secondary-label);">
+          <p class="text-xs font-semibold tracking-wide uppercase" style="letter-spacing:0.08em;" id="authorLabel1"></p>
+          <p class="text-sm font-bold mt-0.5" style="color:var(--label);" id="authorName1"></p>
+          <p class="text-xs mt-0.5" id="authorRole1"></p>
+        </div>
+        <div style="height:1px;flex:1;background:var(--separator);border-radius:1px;"></div>
+      </div>
+
     </section><!-- end seccion-1 -->
 
     <!-- ━━━━━━━━━━━━━━━ SIMULATION MODULE ━━━━━━━━━━━━━━━ -->
@@ -987,6 +998,17 @@
           </div>
         </div>
       </section>
+
+      <!-- ── Author footer ── -->
+      <div class="flex items-center justify-center gap-3 pt-2 pb-1">
+        <div style="height:1px;flex:1;background:var(--separator);border-radius:1px;"></div>
+        <div class="text-center" style="color:var(--secondary-label);">
+          <p class="text-xs font-semibold tracking-wide uppercase" style="letter-spacing:0.08em;" id="authorLabel2"></p>
+          <p class="text-sm font-bold mt-0.5" style="color:var(--label);" id="authorName2"></p>
+          <p class="text-xs mt-0.5" id="authorRole2"></p>
+        </div>
+        <div style="height:1px;flex:1;background:var(--separator);border-radius:1px;"></div>
+      </div>
 
     </section><!-- end seccion-2 -->
 
@@ -1085,7 +1107,10 @@
         mLabelQp: 'qP',
         mLabelDGlc: 'ΔGlucosa',
         mLabelDLac: 'ΔLactato',
-        mLabelDProd: 'ΔProducto'
+        mLabelDProd: 'ΔProducto',
+        authorLabel: 'Autor',
+        authorName: 'Emiliano Balderas Ramírez',
+        authorRole: 'Ingeniero en Biotecnología | Estudiante de Doctorado en Bioquímica, IBt-UNAM'
       },
       en: {
         title: 'Kinetic Drive',
@@ -1234,7 +1259,10 @@
         moduleTeaching: 'Teaching',
         moduleSimulation: 'Simulation',
         tabTeachingTooltip: 'Explanation and worked example with real data',
-        tabSimulationTooltip: 'Simulator with logistic growth model'
+        tabSimulationTooltip: 'Simulator with logistic growth model',
+        authorLabel: 'Author',
+        authorName: 'Emiliano Balderas Ramírez',
+        authorRole: 'Biotechnology Engineer | Doctoral Student in Biochemistry, IBt-UNAM'
       }
     };
 
@@ -1768,6 +1796,11 @@
       el('simQpText').innerHTML = t('simQpText');
       ['continuous1','continuous2','continuous3','continuous4','continuous5'].forEach(id => { const n = el(id); if(n) n.innerHTML = t('continuous'); });
       ['discrete1','discrete2','discrete3','discrete4','discrete5'].forEach(id => { const n = el(id); if(n) n.innerHTML = t('discrete'); });
+      [1, 2].forEach(i => {
+        const lbl = el(`authorLabel${i}`); if (lbl) lbl.textContent = t('authorLabel');
+        const nm  = el(`authorName${i}`);  if (nm)  nm.textContent  = t('authorName');
+        const rol = el(`authorRole${i}`);  if (rol) rol.textContent  = t('authorRole');
+      });
       populateControls();
       setSelectionModeText();
       fillTable();
