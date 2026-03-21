@@ -402,8 +402,8 @@ function switchModule(name) {
   const btn2 = el('tabSimulation');
   if (t1) t1.style.display = name === 'teaching' ? '' : 'none';
   if (t2) t2.style.display = name === 'simulation' ? '' : 'none';
-  if (btn1) btn1.classList.toggle('active', name === 'teaching');
-  if (btn2) btn2.classList.toggle('active', name === 'simulation');
+  if (btn1) { btn1.classList.toggle('active', name === 'teaching'); btn1.setAttribute('aria-selected', String(name === 'teaching')); }
+  if (btn2) { btn2.classList.toggle('active', name === 'simulation'); btn2.setAttribute('aria-selected', String(name === 'simulation')); }
   // Update scale toggle button visual state
   if (name === 'teaching') {
     const linBtn = el('dataLinearBtn');
@@ -581,6 +581,10 @@ function applyTranslations() {
 
 // ── Init ──
 function init() {
+  // Tab switching (remove onclick from HTML, bind here)
+  el('tabTeaching').addEventListener('click', () => switchModule('teaching'));
+  el('tabSimulation').addEventListener('click', () => switchModule('simulation'));
+
   if (el('pairSelect')) {
     el('pairSelect').addEventListener('change', (e) => {
       const idx = parseInt(e.target.value, 10);

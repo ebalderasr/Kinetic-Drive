@@ -128,13 +128,15 @@ Fully static — no backend, no build step, no dependencies to install.
 ```
 Kinetic-Drive/
 ├── index.html              ← markup only
-├── style.css               ← all custom styles
 ├── logo_app.png
 ├── logo.png
 ├── Datos.csv               ← sample CHO fed-batch dataset (real experimental data)
-└── js/
-    ├── app.js              ← all application logic
-    └── translations.js     ← translation strings (ES / EN)
+└── src/
+    ├── css/
+    │   └── app.css         ← all custom styles
+    └── js/
+        ├── app.js          ← all application logic
+        └── translations.js ← translation strings (ES / EN)
 ```
 
 ---

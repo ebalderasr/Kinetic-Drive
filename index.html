@@ -21,7 +21,7 @@
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="./src/css/app.css" />
 </head>
 <body>
 
@@ -55,13 +55,11 @@
         <div class="flex justify-center">
           <div class="segmented-control" role="tablist">
             <button id="tabTeaching" class="seg-btn active" role="tab" aria-selected="true"
-              title="Explicación y ejemplo con datos reales"
-              onclick="switchModule('teaching')">
+              title="Explicación y ejemplo con datos reales">
               📚 <span id="tabTeachingLabel">Enseñanza</span>
             </button>
             <button id="tabSimulation" class="seg-btn" role="tab" aria-selected="false"
-              title="Simulador con modelo logístico"
-              onclick="switchModule('simulation')">
+              title="Simulador con modelo logístico">
               🔬 <span id="tabSimulationLabel">Simulación</span>
             </button>
           </div>
@@ -93,7 +91,7 @@
         </div>
       </div>
 
-      <!-- ── INTERVAL SELECTOR (prominent, new feature) ── -->
+      <!-- ── INTERVAL SELECTOR ── -->
       <div class="card interval-selector" id="explicacion">
         <!-- Title row -->
         <div class="flex flex-wrap items-start justify-between gap-3">
@@ -127,7 +125,7 @@
           </div>
         </div>
 
-        <!-- Metrics summary row — hidden legacy outputs kept for JS compat -->
+        <!-- Hidden elements kept for JS compatibility -->
         <div hidden aria-hidden="true">
           <span id="selectedRangeOut"></span>
           <span id="dGlcOut"></span><span id="dLacOut"></span><span id="dProdOut"></span>
@@ -141,7 +139,6 @@
           <div class="metric-compact"><div id="mLabelQp" class="label">qP</div><div id="qPOut" class="value mono" style="color:#C0003C;">—</div></div>
         </div>
 
-        <!-- Hidden intro copy / interval example note (preserved for translations) -->
         <p id="intervalExampleNote" class="inline-note mt-4">Ejemplo guiado con un intervalo fijo de muestreo para no saturar la vista.</p>
 
         <!-- Hidden elements for JS compatibility -->
@@ -257,7 +254,7 @@
         </div>
       </section>
 
-      <!-- ── Results table (MOVED HERE from seccion-2) ── -->
+      <!-- ── Results table ── -->
       <section class="card p-5 sm:p-6" id="tabla">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -391,7 +388,7 @@
     </div>
   </footer>
 
-  <script src="js/translations.js"></script>
-  <script src="js/app.js"></script>
+  <script src="./src/js/translations.js"></script>
+  <script src="./src/js/app.js"></script>
 </body>
 </html>
