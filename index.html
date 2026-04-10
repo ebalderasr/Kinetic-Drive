@@ -66,8 +66,8 @@
           📚 <span id="tabTeachingLabel">Enseñanza</span>
         </button>
         <button id="tabSimulation" class="seg-btn" role="tab" aria-selected="false"
-          title="Simulador con modelo logístico">
-          🔬 <span id="tabSimulationLabel">Simulación</span>
+          title="IVCD logarítmico bajo crecimiento exponencial">
+          ∫ <span id="tabSimulationLabel">IVCD logarítmico</span>
         </button>
       </div>
     </div>
@@ -84,7 +84,7 @@
         <div>
           <div id="section1Chip" class="chip chip-indigo">Sección 1 · Enseñanza</div>
           <h2 id="section1Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">Fundamentos, fórmulas y ejemplo de cálculo</h2>
-          <p id="section1Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección está pensada para aprender de dónde salen los parámetros, cómo se calculan con datos discretos y cómo se interpretan en un cultivo CHO antes de pasar al simulador.</p>
+          <p id="section1Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección está pensada para aprender de dónde salen los parámetros, cómo se calculan con datos discretos y cómo se interpretan en un cultivo CHO antes de pasar al bloque de IVCD logarítmico.</p>
         </div>
       </div>
 
@@ -303,62 +303,61 @@
 
     </section><!-- end seccion-1 -->
 
-    <!-- ━━━━━━━━━━━━━━━ SIMULATION MODULE ━━━━━━━━━━━━━━━ -->
+    <!-- ━━━━━━━━━━━━━━━ LOG-IVCD MODULE ━━━━━━━━━━━━━━━ -->
     <section id="seccion-2" class="module-shell module-shell-sim space-y-6" style="display:none;">
 
       <!-- Section band -->
       <div class="section-band">
         <div>
-          <div id="section2Chip" class="chip chip-blue">Sección 2 · Simulación</div>
-          <h2 id="section2Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">Simulador y exploración del comportamiento del cultivo</h2>
-          <p id="section2Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección usa un modelo simple para conectar los conceptos con un escenario dinámico. Está pensada para mover parámetros, observar tendencias y reforzar el significado biológico de $\mu$, IVCD, tasas específicas, tasas volumétricas y rendimientos.</p>
+          <div id="section2Chip" class="chip chip-blue">Sección 2 · IVCD logarítmico</div>
+          <h2 id="section2Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">Cálculo analítico de IVCD bajo crecimiento exponencial</h2>
+          <p id="section2Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección reemplaza el simulador por una lectura analítica del mismo intervalo activo. Aquí el IVCD se calcula con la media logarítmica de $X_0$ y $X_1$, que corresponde a la integral exacta de $X(t)$ si el tramo sigue crecimiento exponencial.</p>
         </div>
       </div>
 
-      <!-- ── Simulator panel ── -->
-      <section class="card p-5 sm:p-6" id="simulador">
+      <!-- ── Logarithmic IVCD panel ── -->
+      <section class="card p-5 sm:p-6" id="logIvcdSection">
         <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 id="simTitle" class="section-title">Simulador</h2>
-            <p id="simLead" class="section-copy mt-2 max-w-4xl">Esta sección no intenta ajustar un cultivo real. Su función es mostrar, de manera controlada, cómo cambian el crecimiento, el agotamiento de glucosa, la acumulación de producto y algunos parámetros derivados cuando se modifican ciertas hipótesis del sistema.</p>
+            <h2 id="logIvcdSectionTitle" class="section-title">IVCD con media logarítmica</h2>
+            <p id="logIvcdSectionLead" class="section-copy mt-2 max-w-4xl">Se usa el mismo intervalo seleccionado en la sección de enseñanza. Si supones que entre $t_0$ y $t_1$ la biomasa viable cambia como una exponencial, el área bajo la curva puede obtenerse de forma cerrada, sin recurrir a una suma trapezoidal.</p>
           </div>
         </div>
 
-        <div class="mt-6 grid gap-6 xl:grid-cols-[360px_1fr]">
-          <aside class="space-y-4">
-            <div class="control-card"><div class="slider-label"><span id="simMuText">$\mu_{max}$</span><span id="simMuLabel" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simMu" type="range" min="0.020" max="0.050" step="0.001" value="0.035" /><p id="simMuHelp" class="slider-help">Velocidad máxima en la fase de crecimiento.</p></div>
-            <div class="control-card"><div class="slider-label"><span id="simX0Text">$X_{v,0}$</span><span id="simX0Label" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simX0" type="range" min="0.2" max="1.0" step="0.05" value="0.3" /><p id="simX0Help" class="slider-help">Densidad celular viable inicial.</p></div>
-            <div class="control-card"><div class="slider-label"><span id="simXmaxText">$X_{v,max}$</span><span id="simXmaxLabel" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simXmax" type="range" min="6" max="20" step="1" value="10" /><p id="simXmaxHelp" class="slider-help">Capacidad de carga didáctica del sistema.</p></div>
-            <div class="control-card"><div class="slider-label"><span id="simGlcText">Glucosa inicial</span><span id="simGlc0Label" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simGlc0" type="range" min="6.0" max="8.0" step="0.1" value="7.0" /><p id="simGlcHelp" class="slider-help">Se convierte internamente a mM.</p></div>
-            <div class="control-card"><div class="slider-label"><span id="simYxsText">$Y_{X/Glc}$ aparente</span><span id="simYxsLabel" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simYxs" type="range" min="0.08" max="0.35" step="0.01" value="0.18" /><p id="simYxsHelp" class="slider-help">Más alto implica menos glucosa consumida por la misma ganancia de biomasa, dentro del modelo simplificado.</p></div>
-            <div class="control-card"><div class="slider-label"><span id="simQpText">$q_P$</span><span id="simQpLabel" class="mono" style="color:var(--sys-indigo);"></span></div><input id="simQp" type="range" min="0.5" max="2.5" step="0.1" value="1.5" /><p id="simQpHelp" class="slider-help">Productividad específica supuesta.</p></div>
-            <button id="simResetBtn" class="btn btn-filled w-full" style="border-radius:14px;" type="button">Restaurar simulación</button>
-          </aside>
+        <div class="mt-6 grid gap-5 lg:grid-cols-2">
+          <div class="card p-4">
+            <h3 id="logIvcdHowTitle" class="text-lg font-black">Forma exacta para un tramo exponencial</h3>
+            <div class="mt-4 space-y-4">
+              <div class="equation">$$X(t)=X_0\,e^{\mu (t-t_0)},\qquad \mu=\frac{\ln(X_1/X_0)}{\Delta t}$$</div>
+              <div class="equation">$$IVCD=\int_{t_0}^{t_1}X(t)\,dt=\frac{X_1-X_0}{\ln(X_1/X_0)}\,\Delta t$$</div>
+              <div class="equation">$$IVCD=L(X_0,X_1)\,\Delta t,\qquad L(X_0,X_1)=\frac{X_1-X_0}{\ln(X_1/X_0)}$$</div>
+              <div class="equation">$$\text{si }X_1=X_0,\quad IVCD=X_0\,\Delta t$$</div>
+            </div>
+            <p id="logIvcdHowCopy" class="subtle mt-4">La cantidad entre paréntesis es la media logarítmica. No es una aproximación numérica: es la integral analítica exacta entre dos puntos cuando la trayectoria interna del intervalo es exponencial.</p>
+          </div>
 
           <div class="space-y-5">
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="metric-compact"><div id="logIvcdMetric1" class="label">IVCD logarítmico</div><div id="logIvcdOut" class="value mono" style="color:#0066CC;">—</div></div>
+              <div class="metric-compact"><div id="logIvcdMetric2" class="label">Media logarítmica</div><div id="logMeanOut" class="value mono" style="color:var(--sys-indigo);">—</div></div>
+              <div class="metric-compact"><div id="logIvcdMetric3" class="label">IVCD trapezoidal</div><div id="trapIvcdOut" class="value mono" style="color:#1A8A3A;">—</div></div>
+              <div class="metric-compact"><div id="logIvcdMetric4" class="label">Diferencia relativa</div><div id="ivcdDiffOut" class="value mono" style="color:#C75300;">—</div></div>
+            </div>
+
             <div class="card p-4">
-              <h3 id="simHowTitle" class="text-lg font-black">Cómo se calcula la simulación</h3>
-              <div class="mt-4 grid gap-4 lg:grid-cols-2">
-                <div class="equation">$$\frac{dX_v}{dt}=\mu_{eff}X_v,\qquad \mu_{eff}=\mu_{max}\left(1-\frac{X_v}{X_{v,max}}\right)$$</div>
-                <div class="equation">$$\Delta Glc \approx \frac{\Delta X_v}{Y_{X/Glc}} + m_{Glc}\,IVCD_{\Delta t},\qquad \Delta P \approx q_P\,IVCD_{\Delta t}$$</div>
-              </div>
-              <p id="simHowCopy" class="subtle mt-4">El crecimiento se aproxima con una forma logística simple. El consumo de glucosa tiene dos componentes: uno asociado al aumento de biomasa y otro de mantenimiento. La formación de producto se calcula a partir de un qP constante. No se modelan cambios de viabilidad, cambios metabólicos de fase, consumo de múltiples sustratos, ni regulación fisiológica fina; esas omisiones son deliberadas para mantener la claridad didáctica.</p>
+              <h3 id="logIvcdExplainTitle" class="text-lg font-black">Sustitución del intervalo activo</h3>
+              <p id="logIvcdExplainLead" class="subtle mt-1">Los valores se actualizan automáticamente cuando cambias el inicio o el fin del tramo en la Sección 1.</p>
+              <p id="logIvcdExplain" class="mt-4 text-sm leading-7 mono" style="color:var(--label);"></p>
+              <p id="logIvcdCompare" class="subtle mt-3"></p>
             </div>
-
-            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div class="metric-compact"><div id="simMetric1" class="label">Tiempo de duplicación</div><div id="simTdOut" class="value mono" style="color:var(--sys-indigo);">—</div></div>
-              <div class="metric-compact"><div id="simMetric2" class="label">qGlc global aparente</div><div id="simQglcOut" class="value mono" style="color:#C75300;">—</div></div>
-              <div class="metric-compact"><div id="simMetric3" class="label">Yp/Glc aparente</div><div id="simYpsOut" class="value mono" style="color:#C0003C;">—</div></div>
-              <div class="metric-compact"><div id="simMetric4" class="label">Glucosa residual final</div><div id="simGlcFinalOut" class="value mono" style="color:#0062CC;">—</div></div>
-            </div>
-
-            <section class="card p-4">
-              <h3 id="simPlotTitle" class="text-lg font-black">Perfiles simulados</h3>
-              <p id="simPlotLead" class="subtle mt-1">El comportamiento es intencionalmente simple y sirve para explorar tendencias, no para predecir un proceso real.</p>
-              <div id="simPlot" class="plot-box mt-4"></div>
-            </section>
           </div>
         </div>
+
+        <section class="card p-4 mt-5">
+          <h3 id="logIvcdPlotTitle" class="text-lg font-black">Exponencial exacta vs. interpolación lineal</h3>
+          <p id="logIvcdPlotLead" class="subtle mt-1">La curva azul representa la trayectoria exponencial implícita en la fórmula analítica. La curva verde muestra la interpolación lineal que subyace a la regla trapezoidal.</p>
+          <div id="logIvcdPlot" class="plot-box mt-4"></div>
+        </section>
       </section>
 
       <!-- ── Author footer ── -->

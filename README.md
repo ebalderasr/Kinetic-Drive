@@ -62,18 +62,16 @@ Walks through the complete calculation pipeline using a real CHO fed-batch datas
 
 Select any time interval to compute local kinetics. For each parameter, the app shows a step-by-step arithmetic substitution so every number is traceable. Interactive Plotly charts keep growth and metabolite curves synchronized on hover. Results can be exported as CSV.
 
-### Module 2 — Simulator
+### Module 2 — Logarithmic IVCD
 
-A logistic growth model with maintenance coefficients lets users manipulate biological parameters and observe their downstream effects in real time:
+Reuses the active interval from the teaching view and computes IVCD with the exact analytical expression for exponential growth:
 
-| Parameter | Biological meaning |
+| Quantity | Expression |
 |---|---|
-| $\mu_{max}$ | Maximum specific growth rate |
-| $X_{v,0}$ | Initial inoculum density |
-| $X_{v,max}$ | Carrying capacity |
-| $q_P$ | Specific productivity |
+| Logarithmic mean | $L(X_0,X_1)=\dfrac{X_1-X_0}{\ln(X_1/X_0)}$ |
+| Analytical IVCD | $IVCD=L(X_0,X_1)\Delta t$ |
 
-Use this module to explore how growth rate, nutrient exhaustion, and productivity trade-offs interact — before running experiments.
+The module also contrasts the analytical result against the trapezoidal IVCD and visualizes the exact exponential path versus the linear interpolation behind the trapezoidal rule.
 
 ---
 
@@ -84,7 +82,8 @@ All calculations follow per-interval logic, reflecting the phase-dependent physi
 | Parameter | Formula | Units |
 |---|---|---|
 | Specific growth rate | $\mu \approx \dfrac{\ln X_{v,2} - \ln X_{v,1}}{t_2 - t_1}$ | day⁻¹ |
-| IVCD | $IVCD \approx \sum_i \dfrac{X_{v,i} + X_{v,i+1}}{2}(t_{i+1} - t_i)$ | 10⁶ cells·day/mL |
+| IVCD, discrete | $IVCD \approx \sum_i \dfrac{X_{v,i} + X_{v,i+1}}{2}(t_{i+1} - t_i)$ | 10⁶ cells·day/mL |
+| IVCD, analytical exponential interval | $IVCD = \dfrac{X_{v,2} - X_{v,1}}{\ln(X_{v,2}/X_{v,1})}(t_2 - t_1)$ | 10⁶ cells·day/mL |
 | Specific glucose consumption | $q_{Glc} \approx \dfrac{Glc_1 - Glc_2}{IVCD_{\Delta t}}$ | pmol/cell/day |
 | Specific production rate | $q_P \approx \dfrac{P_2 - P_1}{IVCD_{\Delta t}}$ | pg/cell/day |
 | Biomass yield | $Y_{X/S} = \dfrac{\Delta X_v}{\Delta S}$ | cells/mmol |
@@ -99,7 +98,7 @@ All calculations follow per-interval logic, reflecting the phase-dependent physi
 | **Interval-resolved** | All parameters computed per time interval — no single global fit |
 | **Step-by-step substitution** | Full arithmetic shown for every calculation, traceable from raw data |
 | **Interactive charts** | Plotly.js plots with synchronized hover across all variables |
-| **Simulator** | Logistic growth model for exploring parameter trade-offs before experiments |
+| **Analytical IVCD view** | Exact logarithmic IVCD under an exponential-growth assumption, with comparison against the trapezoidal estimate |
 | **CSV export** | Download the full results table in one click |
 | **No installation** | Fully static — opens in any modern browser, no dependencies |
 

@@ -37,6 +37,14 @@ function fmt(v, d = 3) {
   return Number(v).toFixed(d);
 }
 
+function calcLogMean(x0, x1) {
+  if (!(x0 > 0) || !(x1 > 0)) return null;
+  if (Math.abs(x1 - x0) < 1e-12) return x0;
+  const lnRatio = Math.log(x1 / x0);
+  if (Math.abs(lnRatio) < 1e-12) return x0;
+  return (x1 - x0) / lnRatio;
+}
+
 function calcInterval(startIdx, endIdx) {
   const a = rawData[startIdx];
   const b = rawData[endIdx];
@@ -46,6 +54,9 @@ function calcInterval(startIdx, endIdx) {
   for (let i = startIdx; i < endIdx; i++) {
     ivcd += ((rawData[i].xv + rawData[i + 1].xv) / 2) * (rawData[i + 1].day - rawData[i].day);
   }
+  const logMean = calcLogMean(a.xv, b.xv);
+  const ivcdLog = logMean !== null ? logMean * dtD : null;
+  const ivcdLogH = logMean !== null ? logMean * dtH : null;
   const dGlc = a.glc_mM - b.glc_mM;
   const dLac = b.lac_mM - a.lac_mM;
   const dP = b.product_mgL - a.product_mgL;
@@ -66,6 +77,9 @@ function calcInterval(startIdx, endIdx) {
     p1: a.product_mgL,
     p2: b.product_mgL,
     ivcd,
+    logMean,
+    ivcdLog,
+    ivcdLogH,
     mu: (Math.log(b.xv) - Math.log(a.xv)) / dtH,
     rGlc: dGlc / dtD,
     qGlc: dGlc / ivcd,
@@ -124,6 +138,94 @@ function renderDerivedText() {
   el('qGlcExplain').innerHTML = `rGlc = (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) / ${fmt(r.dtD, 2)} = <strong>${fmt(r.rGlc, 3)} mM/day</strong><br>qGlc = (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qGlc, 3)} pmol/cell/day</strong>`;
   el('qPExplain').innerHTML = `qP = (${fmt(r.p2, 3)} − ${fmt(r.p1, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qP, 3)} pg/cell/day</strong>`;
   el('yieldExplain').innerHTML = `Yx/Glc = (${fmt(r.x2, 3)} − ${fmt(r.x1, 3)}) / (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) = <strong>${fmt(r.yxGlc, 3)}</strong><br>Yp/Glc = (${fmt(r.p2, 3)} − ${fmt(r.p1, 3)}) / (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) = <strong>${fmt(r.ypGlc, 3)}</strong>`;
+  if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
+}
+
+function drawLogIvcdPlot() {
+  const r = activeInterval();
+  const samples = 60;
+  const xs = [];
+  const expYs = [];
+  const linYs = [];
+  const lnRatio = Math.log(r.x2 / r.x1);
+  for (let i = 0; i <= samples; i++) {
+    const f = i / samples;
+    const day = r.t1 + (r.dtD * f);
+    xs.push(day);
+    expYs.push(r.x1 * Math.exp(lnRatio * f));
+    linYs.push(r.x1 + ((r.x2 - r.x1) * f));
+  }
+
+  Plotly.newPlot('logIvcdPlot', [
+    {
+      x: xs,
+      y: expYs,
+      type: 'scatter',
+      mode: 'lines',
+      name: currentLang === 'es' ? 'Exponencial exacta' : 'Exact exponential',
+      line: { color: '#0062CC', width: 3 },
+      fill: 'tozeroy',
+      fillcolor: 'rgba(0,98,204,0.12)',
+      hovertemplate: `${t('dayLabel')} %{x:.2f}<br>Xv %{y:.3f}<extra></extra>`
+    },
+    {
+      x: xs,
+      y: linYs,
+      type: 'scatter',
+      mode: 'lines',
+      name: currentLang === 'es' ? 'Interpolación lineal' : 'Linear interpolation',
+      line: { color: '#1A8A3A', width: 3, dash: 'dash' },
+      hovertemplate: `${t('dayLabel')} %{x:.2f}<br>Xv %{y:.3f}<extra></extra>`
+    },
+    {
+      x: [r.t1, r.t2],
+      y: [r.x1, r.x2],
+      type: 'scatter',
+      mode: 'markers',
+      name: currentLang === 'es' ? 'Datos medidos' : 'Measured data',
+      marker: { color: '#3634A3', size: 9 },
+      hovertemplate: `${t('dayLabel')} %{x:.0f}<br>Xv %{y:.3f}<extra></extra>`
+    }
+  ], {
+    margin: { l: 68, r: 24, t: 10, b: 55 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(242,242,247,0.6)',
+    hovermode: 'x unified',
+    legend: { orientation: 'h', y: 1.14, x: 0 },
+    xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
+    yaxis: { title: t('plotYGrowth'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)' }
+  }, { responsive: true, displaylogo: false });
+}
+
+function renderLogIvcdSection() {
+  const r = activeInterval();
+  const diffPct = r.ivcdLog ? ((r.ivcd - r.ivcdLog) / r.ivcdLog) * 100 : null;
+  const signWord = currentLang === 'es'
+    ? (diffPct === null ? '' : diffPct >= 0 ? 'por encima' : 'por debajo')
+    : (diffPct === null ? '' : diffPct >= 0 ? 'above' : 'below');
+
+  if (el('logIvcdOut')) {
+    el('logIvcdOut').innerHTML =
+      `${fmt(r.ivcdLog, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}<br>` +
+      `<span style="font-size:0.82em;opacity:0.6;">${fmt(r.ivcdLogH, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·h/mL' : 'cells·h/mL'}</span>`;
+  }
+  if (el('logMeanOut')) el('logMeanOut').textContent = `${fmt(r.logMean, 3)} ×10⁶ ${currentLang === 'es' ? 'cél/mL' : 'cells/mL'}`;
+  if (el('trapIvcdOut')) el('trapIvcdOut').textContent = `${fmt(r.ivcd, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}`;
+  if (el('ivcdDiffOut')) el('ivcdDiffOut').textContent = diffPct === null ? t('noData') : `${fmt(diffPct, 2)} %`;
+  if (el('logIvcdExplain')) {
+    el('logIvcdExplain').innerHTML =
+      `L(X_0,X_1) = (${fmt(r.x2, 3)} − ${fmt(r.x1, 3)}) / ln(${fmt(r.x2, 3)} / ${fmt(r.x1, 3)}) = <strong>${fmt(r.logMean, 3)}</strong> ×10⁶ ${currentLang === 'es' ? 'cél/mL' : 'cells/mL'}` +
+      `<br>IVCD = ${fmt(r.logMean, 3)} × ${fmt(r.dtH, 0)} h = <strong>${fmt(r.ivcdLogH, 3)}</strong> ×10⁶ ${currentLang === 'es' ? 'cél·h/mL' : 'cells·h/mL'}` +
+      `<br>IVCD = ${fmt(r.logMean, 3)} × ${fmt(r.dtD, 2)} d = <strong>${fmt(r.ivcdLog, 3)}</strong> ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}`;
+  }
+  if (el('logIvcdCompare')) {
+    el('logIvcdCompare').textContent = diffPct === null
+      ? t('noData')
+      : currentLang === 'es'
+        ? `En este tramo, el IVCD trapezoidal queda ${fmt(Math.abs(diffPct), 2)} % ${signWord} del valor analítico bajo la hipótesis exponencial.`
+        : `For this interval, the trapezoidal IVCD is ${fmt(Math.abs(diffPct), 2)}% ${signWord} the analytical value under the exponential assumption.`;
+  }
+  drawLogIvcdPlot();
   if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
 }
 
@@ -299,6 +401,7 @@ function downloadCSV() {
 function redrawExplanation() {
   setSelectionModeText();
   renderDerivedText();
+  renderLogIvcdSection();
   drawDataPlots();
   renderIntervalSelector();
 }
@@ -314,82 +417,6 @@ function updateFromCustom() {
   const pairIdx = pairIntervals.findIndex(p => p.start === s && p.end === e);
   if (pairIdx >= 0) el('pairSelect').value = String(pairIdx);
   redrawExplanation();
-}
-
-const simDefaults = { mu: 0.035, x0: 0.3, xmax: 10, glc0: 7.0, yxs: 0.18, qp: 1.5 };
-
-function runSimulator() {
-  const mu = parseFloat(el('simMu').value);
-  const x0 = parseFloat(el('simX0').value);
-  const xmax = parseFloat(el('simXmax').value);
-  const glc0gL = parseFloat(el('simGlc0').value);
-  const yxs = parseFloat(el('simYxs').value);
-  const qp = parseFloat(el('simQp').value);
-
-  el('simMuLabel').textContent = `${fmt(mu, 3)} h⁻¹`;
-  el('simX0Label').textContent = `${fmt(x0, 2)} ×10⁶ ${currentLang === 'es' ? 'cél/mL' : 'cells/mL'}`;
-  el('simXmaxLabel').textContent = `${fmt(xmax, 0)} ×10⁶ ${currentLang === 'es' ? 'cél/mL' : 'cells/mL'}`;
-  el('simGlc0Label').textContent = `${fmt(glc0gL, 1)} g/L`;
-  el('simYxsLabel').textContent = fmt(yxs, 2);
-  el('simQpLabel').textContent = `${fmt(qp, 2)} pg/cell/day`;
-
-  const glc0 = glc0gL * 1000 / MW_GLC;
-  const dtH = 1;
-  const dtD = dtH / 24;
-  const totalH = 120;
-  const timeDays = [0];
-  const X = [x0];
-  const Glc = [glc0];
-  const P = [0];
-  const IV = [0];
-
-  for (let i = 0; i < totalH; i++) {
-    const x = X[i];
-    const glc = Glc[i];
-    const active = glc > 1e-9;
-    const muEffMax = active ? Math.max(mu * (1 - x / xmax), 0) : 0;
-    // Calculate uncapped growth and glucose requirement
-    const xNextUncapped = active ? Math.min(x * Math.exp(muEffMax * dtH), xmax) : x;
-    const dXUncapped = Math.max(xNextUncapped - x, 0);
-    const ivStepUncapped = ((x + xNextUncapped) / 2) * dtD;
-    const dGlcNeeded = (yxs > 0 ? dXUncapped / yxs : 0) + 0.05 * ivStepUncapped;
-    // Scale down growth proportionally if glucose is insufficient
-    const glucoseScale = (active && dGlcNeeded > glc) ? glc / dGlcNeeded : 1;
-    const dX = dXUncapped * glucoseScale;
-    const xNext = Math.min(x + dX, xmax);
-    const ivStep = ((x + xNext) / 2) * dtD;
-    const dGlc = active ? Math.min(glc, (yxs > 0 ? dX / yxs : 0) + 0.05 * ivStep) : 0;
-    const dP = active ? qp * ivStep : 0;
-    timeDays.push((i + 1) / 24);
-    X.push(xNext);
-    Glc.push(Math.max(glc - dGlc, 0));
-    P.push(P[i] + dP);
-    IV.push(IV[i] + ivStep);
-  }
-
-  const totalGlc = glc0 - Glc[Glc.length - 1];
-  const totalIV = IV[IV.length - 1];
-  const totalP = P[P.length - 1];
-  const muEffInit = Math.max(mu * (1 - x0 / xmax), 0);
-  el('simTdOut').textContent = muEffInit > 0 ? `${fmt(Math.log(2) / muEffInit, 1)} h` : '—';
-  el('simQglcOut').textContent = `${fmt(totalGlc / totalIV, 2)} pmol/cell/day`;
-  el('simYpsOut').textContent = fmt(totalP / totalGlc, 2);
-  el('simGlcFinalOut').textContent = `${fmt(Glc[Glc.length - 1], 2)} mM`;
-
-  Plotly.newPlot('simPlot', [
-    { x: timeDays, y: X, type: 'scatter', mode: 'lines', name: t('simXv'), line: { color: '#34C759', width: 3 }, fill: 'tozeroy', fillcolor: 'rgba(52,199,89,0.1)', hovertemplate: `${t('sampleHover')} %{x:.2f}<br>${t('simXv')} %{y:.2f}<extra></extra>` },
-    { x: timeDays, y: Glc, type: 'scatter', mode: 'lines', name: t('simGlc'), yaxis: 'y2', line: { color: '#FF9500', width: 3 }, hovertemplate: `${t('sampleHover')} %{x:.2f}<br>${t('simGlc')} %{y:.2f} mM<extra></extra>` },
-    { x: timeDays, y: P, type: 'scatter', mode: 'lines', name: t('simProd'), yaxis: 'y2', line: { color: '#FF3B30', width: 3, dash: 'dot' }, hovertemplate: `${t('sampleHover')} %{x:.2f}<br>${t('simProd')} %{y:.2f} mg/L<extra></extra>` }
-  ], {
-    margin: { l: 72, r: 95, t: 10, b: 55 },
-    paper_bgcolor: 'rgba(0,0,0,0)',
-    plot_bgcolor: 'rgba(242,242,247,0.6)',
-    hovermode: 'x unified',
-    legend: { orientation: 'h', y: 1.14, x: 0 },
-    xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
-    yaxis: { title: t('simXvTitle'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)', automargin: true },
-    yaxis2: { title: t('simRightTitle'), overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false, automargin: true }
-  }, { responsive: true, displaylogo: false });
 }
 
 // ── Module switching ──
@@ -412,6 +439,8 @@ function switchModule(name) {
       linBtn.classList.toggle('btn-scale-active', growthScale === 'linear');
       logBtn.classList.toggle('btn-scale-active', growthScale === 'log');
     }
+  } else if (name === 'simulation') {
+    renderLogIvcdSection();
   }
 }
 
@@ -533,9 +562,9 @@ function applyTranslations() {
     'stepsTitle','step1Badge','step1Title','step1Copy','step2Badge','step2Title','step2Copy',
     'step3Badge','step3Title','step3Copy','step4Badge','step4Title','step4Copy',
     'section2Chip','section2Title','section2Lead',
-    'simTitle','simLead','simMuHelp','simX0Help','simXmaxHelp','simGlcText','simGlcHelp',
-    'simYxsHelp','simQpHelp','simResetBtn','simHowTitle','simHowCopy',
-    'simMetric1','simMetric2','simMetric3','simMetric4','simPlotTitle','simPlotLead',
+    'logIvcdSectionTitle','logIvcdSectionLead','logIvcdHowTitle','logIvcdHowCopy',
+    'logIvcdMetric1','logIvcdMetric2','logIvcdMetric3','logIvcdMetric4',
+    'logIvcdExplainTitle','logIvcdExplainLead','logIvcdPlotTitle','logIvcdPlotLead',
     'tableTitle','tableLead','csvBtn',
     'thInterval','thXv1','thXv2','thGlc1','thGlc2','thLac1','thLac2',
     'thP1','thP2','thDt','thMu','thIvcd','thRglc','thQglc','thRlac','thQlac','thQp','thYx','thYp',
@@ -557,11 +586,6 @@ function applyTranslations() {
   const tabSimulationBtn = el('tabSimulation');
   if (tabTeachingBtn) tabTeachingBtn.title = t('tabTeachingTooltip');
   if (tabSimulationBtn) tabSimulationBtn.title = t('tabSimulationTooltip');
-  el('simMuText').innerHTML = t('simMuText');
-  el('simX0Text').innerHTML = t('simX0Text');
-  el('simXmaxText').innerHTML = t('simXmaxText');
-  el('simYxsText').innerHTML = t('simYxsText');
-  el('simQpText').innerHTML = t('simQpText');
   ['continuous1','continuous2','continuous3','continuous4','continuous5'].forEach(id => { const n = el(id); if(n) n.innerHTML = t('continuous'); });
   ['discrete1','discrete2','discrete3','discrete4','discrete5'].forEach(id => { const n = el(id); if(n) n.innerHTML = t('discrete'); });
   [1, 2].forEach(i => {
@@ -573,8 +597,8 @@ function applyTranslations() {
   setSelectionModeText();
   fillTable();
   renderDerivedText();
+  renderLogIvcdSection();
   drawDataPlots();
-  runSimulator();
   renderIntervalSelector();
   if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
 }
@@ -618,24 +642,13 @@ function init() {
     applyTranslations();
   });
 
-  ['simMu','simX0','simXmax','simGlc0','simYxs','simQp'].forEach(id => el(id).addEventListener('input', runSimulator));
-  el('simResetBtn').addEventListener('click', () => {
-    el('simMu').value = simDefaults.mu;
-    el('simX0').value = simDefaults.x0;
-    el('simXmax').value = simDefaults.xmax;
-    el('simGlc0').value = simDefaults.glc0;
-    el('simYxs').value = simDefaults.yxs;
-    el('simQp').value = simDefaults.qp;
-    runSimulator();
-  });
-
   switchModule('teaching');
   populateControls();
   fillTable();
   setSelectionModeText();
   renderDerivedText();
+  renderLogIvcdSection();
   drawDataPlots();
-  runSimulator();
   renderIntervalSelector();
   if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
 }
