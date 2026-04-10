@@ -5,26 +5,20 @@ const MW_LAC = 90.08;
 
 let currentLang = 'es';
 let growthScale = 'linear';
-let activeStart = 0;
-let activeEnd = 1;
-let syncLock = false;
+let batchStart = 0;
+let batchEnd = 1;
+let fedActiveInterval = 0;
+let compareSource = 'batch';
 
-const rawData = [
-  { day: 0, xv: 0.232, viability: 98.30508, glc_gL: 6.94000, lac_gL: 0.00000, product_mgL: 0.0 },
-  { day: 1, xv: 0.352, viability: 98.32402, glc_gL: 6.69667, lac_gL: 0.38133, product_mgL: 0.6 },
-  { day: 2, xv: 1.158, viability: 99.48454, glc_gL: 5.43000, lac_gL: 0.92500, product_mgL: 1.5 },
-  { day: 3, xv: 2.590, viability: 98.47909, glc_gL: 4.58667, lac_gL: 1.53333, product_mgL: 3.6 },
-  { day: 4, xv: 4.540, viability: 97.00855, glc_gL: 3.03333, lac_gL: 1.34000, product_mgL: 7.2 },
-  { day: 5, xv: 6.500, viability: 95.00000, glc_gL: 1.80000, lac_gL: 1.10000, product_mgL: 9.0 }
-].map(d => ({
-  ...d,
-  glc_mM: (d.glc_gL * 1000) / MW_GLC,
-  lac_mM: (d.lac_gL * 1000) / MW_LAC
-}));
+const datasets = {
+  batch: [],
+  fed: []
+};
 
-const pairIntervals = rawData.slice(0, -1).map((d, i) => ({ start: i, end: i + 1 }));
+let fedIntervals = [];
+let fedAuditRows = [];
+
 const el = (id) => document.getElementById(id);
-
 const defaultTexts = {};
 document.querySelectorAll('[id]').forEach((node) => {
   if (!(node.id in defaultTexts)) defaultTexts[node.id] = node.innerHTML;
@@ -37,6 +31,95 @@ function fmt(v, d = 3) {
   return Number(v).toFixed(d);
 }
 
+function splitCsvLine(line) {
+  const out = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
+      out.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map((v) => v.trim());
+}
+
+function parseLocaleNumber(value) {
+  if (value === undefined || value === null) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const normalized = raw.replace(/^"|"$/g, '').trim();
+  if (!normalized) return null;
+  if (/^(true|false)$/i.test(normalized)) return null;
+  const cleaned = normalized.includes(',') && !normalized.includes('.')
+    ? normalized.replace(',', '.')
+    : normalized.replace(/,/g, '');
+  const parsed = Number.parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeXv(value) {
+  if (value === null || value === undefined) return null;
+  return value > 50 ? value / 1000 : value;
+}
+
+function convertRow(map) {
+  const day = parseLocaleNumber(map.T);
+  const xv = normalizeXv(parseLocaleNumber(map.Xv));
+  const viability = parseLocaleNumber(map.v);
+  const glc_gL = parseLocaleNumber(map.G);
+  const lac_gL = parseLocaleNumber(map.L);
+  const product_mgL = parseLocaleNumber(map.P);
+  const isPostFeed = /^true$/i.test(String(map.is_post_feed ?? '').trim());
+  if (!Number.isFinite(day) || !Number.isFinite(xv)) return null;
+  return {
+    day,
+    xv,
+    viability,
+    glc_gL,
+    lac_gL,
+    product_mgL,
+    isPostFeed,
+    glc_mM: Number.isFinite(glc_gL) ? (glc_gL * 1000) / MW_GLC : null,
+    lac_mM: Number.isFinite(lac_gL) ? (lac_gL * 1000) / MW_LAC : null
+  };
+}
+
+function parseDataset(text) {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 3) return [];
+  const headers = splitCsvLine(lines[1]);
+  return lines.slice(2)
+    .map((line) => {
+      const parts = splitCsvLine(line);
+      const row = {};
+      headers.forEach((header, idx) => {
+        row[header] = parts[idx] ?? '';
+      });
+      return convertRow(row);
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.day - b.day);
+}
+
+async function loadDataset(path) {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error(`Failed to load ${path}`);
+  const text = await response.text();
+  return parseDataset(text);
+}
+
 function calcLogMean(x0, x1) {
   if (!(x0 > 0) || !(x1 > 0)) return null;
   if (Math.abs(x1 - x0) < 1e-12) return x0;
@@ -45,25 +128,39 @@ function calcLogMean(x0, x1) {
   return (x1 - x0) / lnRatio;
 }
 
-function calcInterval(startIdx, endIdx) {
-  const a = rawData[startIdx];
-  const b = rawData[endIdx];
+function diffIfBoth(a, b, fn) {
+  return Number.isFinite(a) && Number.isFinite(b) ? fn(a, b) : null;
+}
+
+function fedNoteFor(status, method) {
+  if (status === 'skip') {
+    return currentLang === 'es'
+      ? 'Evento de feed: se excluye porque mezcla adición de medio con respuesta celular.'
+      : 'Feed event: excluded because it mixes medium addition with cell response.';
+  }
+  if (method === 'fed_mass') {
+    return currentLang === 'es'
+      ? 'Post-feed: el método correcto requiere Vol_mL para usar masas totales e ITVC.'
+      : 'Post-feed: the correct method requires Vol_mL to use total masses and ITVC.';
+  }
+  return currentLang === 'es'
+    ? 'Antes del primer feed: usar concentración + IVCD.'
+    : 'Before first feed: use concentration + IVCD.';
+}
+
+function calcBatchInterval(data, startIdx, endIdx) {
+  const a = data[startIdx];
+  const b = data[endIdx];
   const dtD = b.day - a.day;
   const dtH = dtD * 24;
   let ivcd = 0;
   for (let i = startIdx; i < endIdx; i++) {
-    ivcd += ((rawData[i].xv + rawData[i + 1].xv) / 2) * (rawData[i + 1].day - rawData[i].day);
+    ivcd += ((data[i].xv + data[i + 1].xv) / 2) * (data[i + 1].day - data[i].day);
   }
   const logMean = calcLogMean(a.xv, b.xv);
   const ivcdLog = logMean !== null ? logMean * dtD : null;
-  const ivcdLogH = logMean !== null ? logMean * dtH : null;
-  const dGlc = a.glc_mM - b.glc_mM;
-  const dLac = b.lac_mM - a.lac_mM;
-  const dP = b.product_mgL - a.product_mgL;
   return {
-    label: `${t('dayLabel')} ${a.day}–${b.day}`,
-    startIdx,
-    endIdx,
+    label: `${t('dayLabel')} ${fmt(a.day, 1)}–${fmt(b.day, 1)}`,
     t1: a.day,
     t2: b.day,
     dtD,
@@ -79,249 +176,190 @@ function calcInterval(startIdx, endIdx) {
     ivcd,
     logMean,
     ivcdLog,
-    ivcdLogH,
     mu: (Math.log(b.xv) - Math.log(a.xv)) / dtH,
-    rGlc: dGlc / dtD,
-    qGlc: dGlc / ivcd,
-    rLac: dLac / dtD,
-    qLac: dLac / ivcd,
-    qP: dP / ivcd,
-    yxGlc: dGlc !== 0 ? (b.xv - a.xv) / dGlc : null,
-    ypGlc: dGlc !== 0 ? dP / dGlc : null
+    qGlc: diffIfBoth(a.glc_mM, b.glc_mM, (v1, v2) => (v1 - v2) / ivcd),
+    qLac: diffIfBoth(a.lac_mM, b.lac_mM, (v1, v2) => (v2 - v1) / ivcd),
+    qP: diffIfBoth(a.product_mgL, b.product_mgL, (v1, v2) => (v2 - v1) / ivcd),
+    yxGlc: diffIfBoth(a.glc_mM, b.glc_mM, (v1, v2) => {
+      const dGlc = v1 - v2;
+      return dGlc !== 0 ? (b.xv - a.xv) / dGlc : null;
+    }),
+    ypGlc: diffIfBoth(a.glc_mM, b.glc_mM, (v1, v2) => {
+      const dGlc = v1 - v2;
+      return dGlc !== 0 && Number.isFinite(a.product_mgL) && Number.isFinite(b.product_mgL)
+        ? (b.product_mgL - a.product_mgL) / dGlc
+        : null;
+    })
   };
 }
 
-function allIntervalRows() {
+function buildFedMetadata(data) {
+  const firstFeedIdx = data.findIndex((row) => row.isPostFeed);
+  const validIntervals = [];
+  const audit = [];
+
+  for (let i = 0; i < data.length - 1; i++) {
+    const a = data[i];
+    const b = data[i + 1];
+    const mu = (Math.log(b.xv) - Math.log(a.xv)) / ((b.day - a.day) * 24);
+    let status = 'valid';
+    let method = 'batch';
+    let note = fedNoteFor(status, method);
+
+    if (!a.isPostFeed && b.isPostFeed) {
+      status = 'skip';
+      method = 'excluded';
+      note = fedNoteFor(status, method);
+    } else if (a.isPostFeed && !b.isPostFeed) {
+      status = 'valid';
+      method = 'fed_mass';
+      note = fedNoteFor(status, method);
+    } else if (firstFeedIdx !== -1 && i >= firstFeedIdx) {
+      status = 'valid';
+      method = 'fed_mass';
+      note = fedNoteFor(status, method);
+    }
+
+    const row = {
+      index: i,
+      start: a,
+      end: b,
+      label: `${fmt(a.day, 1)}–${fmt(b.day, 1)}`,
+      status,
+      method,
+      mu,
+      note
+    };
+    audit.push(row);
+    if (status === 'valid') validIntervals.push(row);
+  }
+
+  return { validIntervals, audit };
+}
+
+function activeBatchInterval() {
+  return calcBatchInterval(datasets.batch, batchStart, batchEnd);
+}
+
+function activeFedDescriptor() {
+  return fedIntervals[fedActiveInterval];
+}
+
+function activeFedIntervalData() {
+  const desc = activeFedDescriptor();
+  if (!desc) return null;
+  const a = desc.start;
+  const b = desc.end;
+  const dtD = b.day - a.day;
+  const dtH = dtD * 24;
+  const ivcd = ((a.xv + b.xv) / 2) * dtD;
+  return {
+    ...desc,
+    dtD,
+    dtH,
+    ivcd,
+    logMean: calcLogMean(a.xv, b.xv),
+    ivcdLog: calcLogMean(a.xv, b.xv) !== null ? calcLogMean(a.xv, b.xv) * dtD : null,
+    qGlc: desc.method === 'batch' ? diffIfBoth(a.glc_mM, b.glc_mM, (v1, v2) => (v1 - v2) / ivcd) : null,
+    qLac: desc.method === 'batch' ? diffIfBoth(a.lac_mM, b.lac_mM, (v1, v2) => (v2 - v1) / ivcd) : null,
+    qP: desc.method === 'batch' ? diffIfBoth(a.product_mgL, b.product_mgL, (v1, v2) => (v2 - v1) / ivcd) : null
+  };
+}
+
+function batchRows() {
   const rows = [];
-  for (let i = 0; i < rawData.length - 1; i++) rows.push(calcInterval(i, i + 1));
+  for (let i = 0; i < datasets.batch.length - 1; i++) rows.push(calcBatchInterval(datasets.batch, i, i + 1));
   return rows;
 }
 
-function activeInterval() {
-  return calcInterval(activeStart, activeEnd);
+function populateBatchControls() {
+  const data = datasets.batch;
+  const n = data.length;
+  const leftPct = (batchStart / (n - 1)) * 100;
+  const rightPct = (batchEnd / (n - 1)) * 100;
+  el('timelineRangeTrack').style.left = `${leftPct}%`;
+  el('timelineRangeTrack').style.width = `${rightPct - leftPct}%`;
+
+  el('timelineNodeRow').innerHTML = data.map((d, idx) => {
+    const isStart = idx === batchStart;
+    const isEnd = idx === batchEnd;
+    const inRange = idx > batchStart && idx < batchEnd;
+    let bg = 'white';
+    let border = 'rgba(0,0,0,0.12)';
+    let color = 'rgba(60,60,67,0.5)';
+    let scale = '';
+    if (isStart) { bg = '#5856D6'; border = '#5856D6'; color = 'white'; scale = 'transform:scale(1.2);'; }
+    else if (isEnd) { bg = '#3634A3'; border = '#3634A3'; color = 'white'; scale = 'transform:scale(1.2);'; }
+    else if (inRange) { bg = 'rgba(88,86,214,0.12)'; border = 'rgba(88,86,214,0.4)'; color = '#5856D6'; }
+    return `<div onclick="window.setBatchRange(${idx})" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 2px 8px rgba(0,0,0,0.1);border:2px solid ${border};background:${bg};color:${color};${scale}">${fmt(d.day, 1)}</div>`;
+  }).join('');
+
+  el('timelineLabelRow').innerHTML = data.map((d, idx) => {
+    const isActive = idx === batchStart || idx === batchEnd;
+    return `<span style="font-size:11px;font-weight:${isActive ? '700' : '500'};color:${isActive ? '#5856D6' : 'rgba(60,60,67,0.4)'};text-align:center;line-height:1.2;">${t('dayLabel')}<br>${fmt(d.day, 1)}</span>`;
+  }).join('');
+
+  el('startBtnRow').innerHTML = data.slice(0, -1).map((d, idx) => {
+    const isActive = idx === batchStart;
+    const sty = isActive
+      ? 'background:#5856D6;color:white;border:1px solid #5856D6;box-shadow:0 3px 10px rgba(88,86,214,0.35);'
+      : 'background:rgba(255,255,255,0.85);color:rgba(0,0,0,0.7);border:1px solid rgba(0,0,0,0.1);';
+    return `<button onclick="window.setBatchStart(${idx})" style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${fmt(d.day, 1)}</button>`;
+  }).join('');
+
+  el('endBtnRow').innerHTML = data.slice(1).map((d, idx) => {
+    const realIdx = idx + 1;
+    const isActive = realIdx === batchEnd;
+    const isDisabled = realIdx <= batchStart;
+    let sty;
+    if (isActive) sty = 'background:#3634A3;color:white;border:1px solid #3634A3;box-shadow:0 3px 10px rgba(54,52,163,0.35);';
+    else if (isDisabled) sty = 'background:transparent;color:rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.05);cursor:not-allowed;opacity:0.5;';
+    else sty = 'background:rgba(255,255,255,0.85);color:rgba(0,0,0,0.7);border:1px solid rgba(0,0,0,0.1);';
+    return `<button onclick="window.setBatchEnd(${realIdx})" ${isDisabled ? 'disabled' : ''} style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${fmt(d.day, 1)}</button>`;
+  }).join('');
 }
 
-function populateControls() {
-  if (!el('pairSelect') || !el('startSelect') || !el('endSelect')) return;
-  el('pairSelect').innerHTML = pairIntervals.map((r, idx) => `<option value="${idx}">${t('pairPrefix')} ${rawData[r.start].day}–${rawData[r.end].day}</option>`).join('');
-  const opts = rawData.map((d, idx) => `<option value="${idx}">${t('dayLabel')} ${d.day}</option>`).join('');
-  el('startSelect').innerHTML = opts;
-  el('endSelect').innerHTML = opts;
-  el('startSelect').value = String(activeStart);
-  el('endSelect').value = String(activeEnd);
-  const pairIdx = pairIntervals.findIndex(p => p.start === activeStart && p.end === activeEnd);
-  if (pairIdx >= 0) el('pairSelect').value = String(pairIdx);
-}
-
-function setSelectionModeText() {
-  if (!el('selectionModeText')) return;
-  el('selectionModeText').innerHTML = activeEnd === activeStart + 1 ? t('selectionConsecutive') : t('selectionCustom');
-}
-
-function renderDerivedText() {
-  const r = activeInterval();
-  const ivcdUnits = currentLang === 'es' ? '×10⁶ cél·d/mL' : '×10⁶ cells·d/mL';
-  if (el('selectedRangeOut')) el('selectedRangeOut').textContent = r.label;
+function renderBatchMetrics() {
+  const r = activeBatchInterval();
+  const ivcdUnits = currentLang === 'es' ? '×10⁶ cél·d/mL' : '×10⁶ cells·day/mL';
   el('deltaTimeOut').textContent = `${fmt(r.dtD, 2)} d`;
   el('muOut').innerHTML = `${fmt(r.mu, 4)} h⁻¹<br><span style="font-size:0.82em;opacity:0.6;">${fmt(r.mu * 24, 3)} d⁻¹</span>`;
   el('ivcdOutCompact').textContent = `${fmt(r.ivcd, 3)} ${ivcdUnits}`;
   el('qGlcOut').textContent = `${fmt(r.qGlc, 3)} pmol/cel/d`;
   el('qLacOut').textContent = `${fmt(r.qLac, 3)} pmol/cel/d`;
   el('qPOut').textContent = `${fmt(r.qP, 3)} pg/cel/d`;
-  if (el('dGlcOut')) el('dGlcOut').textContent = `${fmt(r.glc1 - r.glc2, 3)} mM`;
-  if (el('dLacOut')) el('dLacOut').textContent = `${fmt(r.lac2 - r.lac1, 3)} mM`;
-  if (el('dProdOut')) el('dProdOut').textContent = `${fmt(r.p2 - r.p1, 3)} mg/L`;
-  el('muExplain').innerHTML =
-    `μ = [ln(${fmt(r.x2, 3)}) − ln(${fmt(r.x1, 3)})] / ${fmt(r.dtH, 0)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>` +
-    `μ = [ln(${fmt(r.x2, 3)}) − ln(${fmt(r.x1, 3)})] / ${fmt(r.dtD, 2)} d = <strong>${fmt(r.mu * 24, 3)} d⁻¹</strong>`;
-  el('ivcdExplain').innerHTML = `IVCDΔ = ${currentLang === 'es' ? 'suma trapezoidal' : 'trapezoidal sum'} ${currentLang === 'es' ? 'entre' : 'between'} ${t('dayLabel').toLowerCase()} ${fmt(r.t1, 0)} ${currentLang === 'es' ? 'y' : 'and'} ${t('dayLabel').toLowerCase()} ${fmt(r.t2, 0)} = <strong>${fmt(r.ivcd, 3)}</strong> ×10⁶ ${currentLang === 'es' ? 'cél·día/mL' : 'cells·day/mL'}`;
-  el('qGlcExplain').innerHTML = `rGlc = (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) / ${fmt(r.dtD, 2)} = <strong>${fmt(r.rGlc, 3)} mM/day</strong><br>qGlc = (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qGlc, 3)} pmol/cell/day</strong>`;
-  el('qPExplain').innerHTML = `qP = (${fmt(r.p2, 3)} − ${fmt(r.p1, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qP, 3)} pg/cell/day</strong>`;
+  el('muExplain').innerHTML = `μ = [ln(${fmt(r.x2, 3)}) − ln(${fmt(r.x1, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong>`;
+  el('ivcdExplain').innerHTML = `${currentLang === 'es' ? 'IVCD trapezoidal' : 'Trapezoidal IVCD'} = <strong>${fmt(r.ivcd, 3)}</strong> ${ivcdUnits}`;
+  el('qGlcExplain').innerHTML = `qGlc = (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qGlc, 3)}</strong><br>qLac = (${fmt(r.lac2, 3)} − ${fmt(r.lac1, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qLac, 3)}</strong>`;
+  el('qPExplain').innerHTML = `qP = (${fmt(r.p2, 3)} − ${fmt(r.p1, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qP, 3)}</strong>`;
   el('yieldExplain').innerHTML = `Yx/Glc = (${fmt(r.x2, 3)} − ${fmt(r.x1, 3)}) / (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) = <strong>${fmt(r.yxGlc, 3)}</strong><br>Yp/Glc = (${fmt(r.p2, 3)} − ${fmt(r.p1, 3)}) / (${fmt(r.glc1, 3)} − ${fmt(r.glc2, 3)}) = <strong>${fmt(r.ypGlc, 3)}</strong>`;
-  if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
 }
 
-function drawLogIvcdPlot() {
-  const r = activeInterval();
-  const samples = 60;
-  const xs = [];
-  const expYs = [];
-  const linYs = [];
-  const lnRatio = Math.log(r.x2 / r.x1);
-  for (let i = 0; i <= samples; i++) {
-    const f = i / samples;
-    const day = r.t1 + (r.dtD * f);
-    xs.push(day);
-    expYs.push(r.x1 * Math.exp(lnRatio * f));
-    linYs.push(r.x1 + ((r.x2 - r.x1) * f));
+function drawBatchPlots() {
+  const data = datasets.batch;
+  const r = activeBatchInterval();
+  const intervalXs = [r.t1];
+  const intervalYs = [0];
+  for (let i = batchStart; i <= batchEnd; i++) {
+    intervalXs.push(data[i].day);
+    intervalYs.push(data[i].xv);
   }
+  intervalXs.push(r.t2);
+  intervalYs.push(0);
 
-  Plotly.newPlot('logIvcdPlot', [
-    {
-      x: xs,
-      y: expYs,
-      type: 'scatter',
-      mode: 'lines',
-      name: currentLang === 'es' ? 'Exponencial exacta' : 'Exact exponential',
-      line: { color: '#0062CC', width: 3 },
-      fill: 'tozeroy',
-      fillcolor: 'rgba(0,98,204,0.12)',
-      hovertemplate: `${t('dayLabel')} %{x:.2f}<br>Xv %{y:.3f}<extra></extra>`
-    },
-    {
-      x: xs,
-      y: linYs,
-      type: 'scatter',
-      mode: 'lines',
-      name: currentLang === 'es' ? 'Interpolación lineal' : 'Linear interpolation',
-      line: { color: '#1A8A3A', width: 3, dash: 'dash' },
-      hovertemplate: `${t('dayLabel')} %{x:.2f}<br>Xv %{y:.3f}<extra></extra>`
-    },
-    {
-      x: [r.t1, r.t2],
-      y: [r.x1, r.x2],
-      type: 'scatter',
-      mode: 'markers',
-      name: currentLang === 'es' ? 'Datos medidos' : 'Measured data',
-      marker: { color: '#3634A3', size: 9 },
-      hovertemplate: `${t('dayLabel')} %{x:.0f}<br>Xv %{y:.3f}<extra></extra>`
-    }
-  ], {
-    margin: { l: 68, r: 24, t: 10, b: 55 },
-    paper_bgcolor: 'rgba(0,0,0,0)',
-    plot_bgcolor: 'rgba(242,242,247,0.6)',
-    hovermode: 'x unified',
-    legend: { orientation: 'h', y: 1.14, x: 0 },
-    xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
-    yaxis: { title: t('plotYGrowth'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)' }
-  }, { responsive: true, displaylogo: false });
-}
-
-function renderLogIvcdSection() {
-  const r = activeInterval();
-  const diffPct = r.ivcdLog ? ((r.ivcd - r.ivcdLog) / r.ivcdLog) * 100 : null;
-  const signWord = currentLang === 'es'
-    ? (diffPct === null ? '' : diffPct >= 0 ? 'por encima' : 'por debajo')
-    : (diffPct === null ? '' : diffPct >= 0 ? 'above' : 'below');
-
-  if (el('logIvcdOut')) {
-    el('logIvcdOut').innerHTML =
-      `${fmt(r.ivcdLog, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}<br>` +
-      `<span style="font-size:0.82em;opacity:0.6;">${fmt(r.ivcdLogH, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·h/mL' : 'cells·h/mL'}</span>`;
-  }
-  if (el('logMeanOut')) el('logMeanOut').textContent = `${fmt(r.logMean, 3)} ×10⁶ ${currentLang === 'es' ? 'cél/mL' : 'cells/mL'}`;
-  if (el('trapIvcdOut')) el('trapIvcdOut').textContent = `${fmt(r.ivcd, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}`;
-  if (el('ivcdDiffOut')) el('ivcdDiffOut').textContent = diffPct === null ? t('noData') : `${fmt(diffPct, 2)} %`;
-  if (el('logIvcdExplain')) {
-    el('logIvcdExplain').innerHTML =
-      `L(X_0,X_1) = (${fmt(r.x2, 3)} − ${fmt(r.x1, 3)}) / ln(${fmt(r.x2, 3)} / ${fmt(r.x1, 3)}) = <strong>${fmt(r.logMean, 3)}</strong> ×10⁶ ${currentLang === 'es' ? 'cél/mL' : 'cells/mL'}` +
-      `<br>IVCD = ${fmt(r.logMean, 3)} × ${fmt(r.dtH, 0)} h = <strong>${fmt(r.ivcdLogH, 3)}</strong> ×10⁶ ${currentLang === 'es' ? 'cél·h/mL' : 'cells·h/mL'}` +
-      `<br>IVCD = ${fmt(r.logMean, 3)} × ${fmt(r.dtD, 2)} d = <strong>${fmt(r.ivcdLog, 3)}</strong> ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}`;
-  }
-  if (el('logIvcdCompare')) {
-    el('logIvcdCompare').textContent = diffPct === null
-      ? t('noData')
-      : currentLang === 'es'
-        ? `En este tramo, el IVCD trapezoidal queda ${fmt(Math.abs(diffPct), 2)} % ${signWord} del valor analítico bajo la hipótesis exponencial.`
-        : `For this interval, the trapezoidal IVCD is ${fmt(Math.abs(diffPct), 2)}% ${signWord} the analytical value under the exponential assumption.`;
-  }
-  drawLogIvcdPlot();
-  if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
-}
-
-function intervalPolygon() {
-  const xs = [rawData[activeStart].day];
-  const ys = [0];
-  for (let i = activeStart; i <= activeEnd; i++) {
-    xs.push(rawData[i].day);
-    ys.push(rawData[i].xv);
-  }
-  xs.push(rawData[activeEnd].day);
-  ys.push(0);
-  return { xs, ys };
-}
-
-function hoverLine(day) {
-  return [{ type: 'line', x0: day, x1: day, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: '#334155', width: 1.5, dash: 'dot' } }];
-}
-
-function metIntervalShape() {
-  return {
-    type: 'rect',
-    x0: rawData[activeStart].day,
-    x1: rawData[activeEnd].day,
-    y0: 0, y1: 1,
-    xref: 'x', yref: 'paper',
-    fillcolor: 'rgba(88,86,214,0.10)',
-    line: { color: '#5856D6', width: 1.5, dash: 'dash' },
-    layer: 'below'
-  };
-}
-
-function nearestDayFromEvent(e) {
-  return e && e.points && e.points.length ? e.points[0].x : null;
-}
-
-function setSharedHover(day) {
-  Plotly.relayout('growthPlotData', { shapes: hoverLine(day), transition: { duration: 0 } });
-  Plotly.relayout('metPlotData', { shapes: [metIntervalShape(), ...hoverLine(day)], transition: { duration: 0 } });
-}
-
-function clearSharedHover() {
-  Plotly.relayout('growthPlotData', { shapes: [], transition: { duration: 0 } });
-  Plotly.relayout('metPlotData', { shapes: [metIntervalShape()], transition: { duration: 0 } });
-}
-
-function attachHoverSync() {
-  const g = el('growthPlotData');
-  const m = el('metPlotData');
-  if (!g || !m || g.__syncBound) return;
-  const hoverHandler = (e) => {
-    if (syncLock) return;
-    syncLock = true;
-    const day = nearestDayFromEvent(e);
-    if (day !== null) setSharedHover(day);
-    syncLock = false;
-  };
-  const unhoverHandler = () => {
-    if (syncLock) return;
-    syncLock = true;
-    clearSharedHover();
-    syncLock = false;
-  };
-  g.on('plotly_hover', hoverHandler);
-  m.on('plotly_hover', hoverHandler);
-  g.on('plotly_unhover', unhoverHandler);
-  m.on('plotly_unhover', unhoverHandler);
-  g.__syncBound = true;
-  m.__syncBound = true;
-}
-
-function drawDataPlots(sharedDay = null) {
-  // Reset sync flags so attachHoverSync re-binds after each redraw
-  const gEl = el('growthPlotData');
-  const mEl = el('metPlotData');
-  if (gEl) gEl.__syncBound = false;
-  if (mEl) mEl.__syncBound = false;
-
-  const isLog = growthScale === 'log';
-  // In log mode: skip polygon (contains y=0 → log undefined) and remove fill-to-zero
-  const poly = isLog ? { xs: [], ys: [] } : intervalPolygon();
-  const growthShapes = sharedDay === null ? [] : hoverLine(sharedDay);
-  // metPlot always shows the interval rect; hover line is added on top
-  const metShapes = sharedDay === null
-    ? [metIntervalShape()]
-    : [metIntervalShape(), ...hoverLine(sharedDay)];
-
-  // Log range: compute decade bounds from data so ticks are 0.1 → 1 → 10 etc.
-  const xvValues = rawData.map(d => d.xv).filter(v => v > 0);
+  const xvValues = data.map((d) => d.xv).filter((v) => v > 0);
   const logRangeMin = Math.floor(Math.log10(Math.min(...xvValues)));
   const logRangeMax = Math.ceil(Math.log10(Math.max(...xvValues)));
 
   Plotly.newPlot('growthPlotData', [
-    { x: rawData.map(d => d.day), y: rawData.map(d => d.xv), type: 'scatter', mode: 'lines+markers', name: t('traceXv'), line: { color: '#34C759', width: 3 }, marker: { size: 8, color: '#1A8A3A' }, fill: isLog ? 'none' : 'tozeroy', fillcolor: 'rgba(52,199,89,0.1)', hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceXv')} %{y:.3f}<extra></extra>` },
-    { x: poly.xs, y: poly.ys, type: 'scatter', mode: 'lines', name: t('traceRange'), fill: 'toself', fillcolor: 'rgba(88,86,214,0.15)', line: { color: '#5856D6', width: 2, dash: 'dash' }, hovertemplate: `${t('traceRange')}<extra></extra>` },
-    { x: rawData.map(d => d.day), y: rawData.map((d, i) => { if (i === 0) return 0; let total = 0; for (let j = 0; j < i; j++) total += ((rawData[j].xv + rawData[j + 1].xv) / 2) * (rawData[j + 1].day - rawData[j].day); return total; }), type: 'scatter', mode: 'lines+markers', name: t('traceIvcdAcc'), yaxis: 'y2', line: { color: '#5856D6', width: 3, dash: 'dot' }, marker: { size: 6, color: '#5856D6' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceIvcdAcc')} %{y:.3f}<extra></extra>` }
+    { x: data.map((d) => d.day), y: data.map((d) => d.xv), type: 'scatter', mode: 'lines+markers', name: t('traceXv'), line: { color: '#34C759', width: 3 }, marker: { size: 8, color: '#1A8A3A' }, fill: growthScale === 'log' ? 'none' : 'tozeroy', fillcolor: 'rgba(52,199,89,0.1)' },
+    { x: intervalXs, y: intervalYs, type: 'scatter', mode: 'lines', name: t('traceRange'), fill: 'toself', fillcolor: 'rgba(88,86,214,0.15)', line: { color: '#5856D6', width: 2, dash: 'dash' } },
+    { x: data.map((d) => d.day), y: data.map((d, i) => {
+      if (i === 0) return 0;
+      let total = 0;
+      for (let j = 0; j < i; j++) total += ((data[j].xv + data[j + 1].xv) / 2) * (data[j + 1].day - data[j].day);
+      return total;
+    }), type: 'scatter', mode: 'lines+markers', name: t('traceIvcdAcc'), yaxis: 'y2', line: { color: '#5856D6', width: 3, dash: 'dot' }, marker: { size: 6, color: '#5856D6' } }
   ], {
     margin: { l: 65, r: 70, t: 10, b: 55 },
     paper_bgcolor: 'rgba(0,0,0,0)',
@@ -329,20 +367,14 @@ function drawDataPlots(sharedDay = null) {
     hovermode: 'x unified',
     legend: { orientation: 'h', y: 1.14, x: 0 },
     xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
-    yaxis: {
-      title: t('plotYGrowth'),
-      type: growthScale,
-      ...(isLog ? { range: [logRangeMin, logRangeMax] } : { rangemode: 'tozero' }),
-      gridcolor: 'rgba(60,60,67,0.1)'
-    },
-    yaxis2: { title: t('plotYIvcd'), overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false },
-    shapes: growthShapes
+    yaxis: { title: t('plotYGrowth'), type: growthScale, ...(growthScale === 'log' ? { range: [logRangeMin, logRangeMax] } : { rangemode: 'tozero' }), gridcolor: 'rgba(60,60,67,0.1)' },
+    yaxis2: { title: t('plotYIvcd'), overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false }
   }, { responsive: true, displaylogo: false });
 
   Plotly.newPlot('metPlotData', [
-    { x: rawData.map(d => d.day), y: rawData.map(d => d.glc_mM), type: 'scatter', mode: 'lines+markers', name: t('traceGlc'), line: { color: '#FF9500', width: 3 }, marker: { size: 8, color: '#C75300' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceGlc')} %{y:.3f} mM<extra></extra>` },
-    { x: rawData.map(d => d.day), y: rawData.map(d => d.lac_mM), type: 'scatter', mode: 'lines+markers', name: t('traceLac'), line: { color: '#5AC8FA', width: 3 }, marker: { size: 8, color: '#0062CC' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceLac')} %{y:.3f} mM<extra></extra>` },
-    { x: rawData.map(d => d.day), y: rawData.map(d => d.product_mgL), type: 'scatter', mode: 'lines+markers', name: t('traceProd'), yaxis: 'y2', line: { color: '#FF3B30', width: 3 }, marker: { size: 8, color: '#C0003C' }, hovertemplate: `${t('sampleHover')} %{x}<br>${t('traceProd')} %{y:.3f} mg/L<extra></extra>` }
+    { x: data.map((d) => d.day), y: data.map((d) => d.glc_mM), type: 'scatter', mode: 'lines+markers', name: t('traceGlc'), line: { color: '#FF9500', width: 3 }, marker: { size: 8, color: '#C75300' } },
+    { x: data.map((d) => d.day), y: data.map((d) => d.lac_mM), type: 'scatter', mode: 'lines+markers', name: t('traceLac'), line: { color: '#5AC8FA', width: 3 }, marker: { size: 8, color: '#0062CC' } },
+    { x: data.map((d) => d.day), y: data.map((d) => d.product_mgL), type: 'scatter', mode: 'lines+markers', name: t('traceProd'), yaxis: 'y2', line: { color: '#FF3B30', width: 3 }, marker: { size: 8, color: '#C0003C' } }
   ], {
     margin: { l: 65, r: 70, t: 10, b: 55 },
     paper_bgcolor: 'rgba(0,0,0,0)',
@@ -352,12 +384,12 @@ function drawDataPlots(sharedDay = null) {
     xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
     yaxis: { title: t('plotYSubs'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)' },
     yaxis2: { title: t('plotYProd'), overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false },
-    shapes: metShapes
-  }, { responsive: true, displaylogo: false }).then(attachHoverSync);
+    shapes: [{ type: 'rect', x0: r.t1, x1: r.t2, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'rgba(88,86,214,0.10)', line: { color: '#5856D6', width: 1.5, dash: 'dash' }, layer: 'below' }]
+  }, { responsive: true, displaylogo: false });
 }
 
-function fillTable() {
-  el('tableBody').innerHTML = allIntervalRows().map(r => `
+function fillBatchTable() {
+  el('tableBody').innerHTML = batchRows().map((r) => `
     <tr>
       <td>${r.label}</td>
       <td class="mono">${fmt(r.x1, 3)}</td>
@@ -371,9 +403,7 @@ function fillTable() {
       <td class="mono">${fmt(r.dtD, 2)}</td>
       <td class="mono">${fmt(r.mu, 4)}</td>
       <td class="mono">${fmt(r.ivcd, 3)}</td>
-      <td class="mono">${fmt(r.rGlc, 3)}</td>
       <td class="mono">${fmt(r.qGlc, 3)}</td>
-      <td class="mono">${fmt(r.rLac, 3)}</td>
       <td class="mono">${fmt(r.qLac, 3)}</td>
       <td class="mono">${fmt(r.qP, 3)}</td>
       <td class="mono">${fmt(r.yxGlc, 3)}</td>
@@ -382,275 +412,304 @@ function fillTable() {
   `).join('');
 }
 
-function downloadCSV() {
-  const rows = allIntervalRows();
-  const header = ['interval','Xv1','Xv2','Glc1_mM','Glc2_mM','Lac1_mM','Lac2_mM','P1_mgL','P2_mgL','dt_d','mu_h-1','IVCD_delta','rGlc_mM_day','qGlc_pmol_cell_day','rLac_mM_day','qLac_pmol_cell_day','qP_pg_cell_day','Yx_Glc','Yp_Glc'];
-  const body = rows.map(r => [r.label, r.x1, r.x2, r.glc1, r.glc2, r.lac1, r.lac2, r.p1, r.p2, r.dtD, r.mu, r.ivcd, r.rGlc, r.qGlc, r.rLac, r.qLac, r.qP, r.yxGlc, r.ypGlc]);
-  const csv = [header, ...body].map(row => row.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'kinetic_drive_results.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+function populateFedControls() {
+  el('fedIntervalSelect').innerHTML = fedIntervals.map((interval, idx) => {
+    const methodLabel = interval.method === 'batch'
+      ? (currentLang === 'es' ? 'pre-feed' : 'pre-feed')
+      : (currentLang === 'es' ? 'post-feed' : 'post-feed');
+    return `<option value="${idx}">${interval.label} · ${methodLabel}</option>`;
+  }).join('');
+  el('fedIntervalSelect').value = String(fedActiveInterval);
 }
 
-function redrawExplanation() {
-  setSelectionModeText();
-  renderDerivedText();
-  renderLogIvcdSection();
-  drawDataPlots();
-  renderIntervalSelector();
+function renderFedSection() {
+  const r = activeFedIntervalData();
+  if (!r) return;
+  const isBatchLike = r.method === 'batch';
+  const methodLabel = isBatchLike
+    ? (currentLang === 'es' ? 'Concentración + IVCD' : 'Concentration + IVCD')
+    : (currentLang === 'es' ? 'Masas totales + ITVC' : 'Total masses + ITVC');
+  const normLabel = isBatchLike
+    ? `${currentLang === 'es' ? 'IVCD' : 'IVCD'} = ${fmt(r.ivcd, 3)}`
+    : (currentLang === 'es' ? 'ITVC requiere Vol_mL' : 'ITVC requires Vol_mL');
+  el('fedModeOut').textContent = methodLabel;
+  el('fedMuOut').innerHTML = `${fmt(r.mu, 4)} h⁻¹<br><span style="font-size:0.82em;opacity:0.6;">${fmt(r.mu * 24, 3)} d⁻¹</span>`;
+  el('fedNormOut').textContent = normLabel;
+  el('fedQGlcOut').textContent = isBatchLike ? `${fmt(r.qGlc, 3)} pmol/cel/d` : t('noData');
+  el('fedQLacOut').textContent = isBatchLike ? `${fmt(r.qLac, 3)} pmol/cel/d` : t('noData');
+  el('fedQPOut').textContent = isBatchLike ? `${fmt(r.qP, 3)} pg/cel/d` : t('noData');
+
+  const a = r.start;
+  const b = r.end;
+  el('fedExplain').innerHTML = isBatchLike
+    ? `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>IVCD = ((${fmt(a.xv, 3)} + ${fmt(b.xv, 3)}) / 2) × ${fmt(r.dtD, 2)} d = <strong>${fmt(r.ivcd, 3)}</strong><br>qGlc = (${fmt(a.glc_mM, 3)} − ${fmt(b.glc_mM, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qGlc, 3)}</strong>`
+    : `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>M_i = C_i·V/1000,  TC = X_v·V,  q_i = ΔM_i/ΔITVC<br><strong>${currentLang === 'es' ? 'Con este dataset no se puede cerrar el balance post-feed porque falta Vol_mL.' : 'This dataset cannot close the post-feed balance because Vol_mL is missing.'}</strong>`;
+  el('fedExplainNote').textContent = r.note;
 }
 
-function updateFromCustom() {
-  let s = parseInt(el('startSelect').value, 10);
-  let e = parseInt(el('endSelect').value, 10);
-  if (e <= s) e = s + 1;
-  if (e >= rawData.length) e = rawData.length - 1;
-  activeStart = s;
-  activeEnd = e;
-  el('endSelect').value = String(e);
-  const pairIdx = pairIntervals.findIndex(p => p.start === s && p.end === e);
-  if (pairIdx >= 0) el('pairSelect').value = String(pairIdx);
-  redrawExplanation();
+function drawFedPlots() {
+  const data = datasets.fed;
+  const feedDays = data.filter((row) => row.isPostFeed).map((row) => row.day);
+  const feedShapes = feedDays.map((day) => ({
+    type: 'line',
+    x0: day,
+    x1: day,
+    y0: 0,
+    y1: 1,
+    xref: 'x',
+    yref: 'paper',
+    line: { color: '#FF9500', width: 1.5, dash: 'dot' }
+  }));
+
+  Plotly.newPlot('fedGrowthPlot', [
+    { x: data.filter((row) => !row.isPostFeed).map((row) => row.day), y: data.filter((row) => !row.isPostFeed).map((row) => row.xv), type: 'scatter', mode: 'lines+markers', name: currentLang === 'es' ? 'Muestreo regular' : 'Regular sample', line: { color: '#34C759', width: 3 }, marker: { size: 8, color: '#1A8A3A' } },
+    { x: data.filter((row) => row.isPostFeed).map((row) => row.day), y: data.filter((row) => row.isPostFeed).map((row) => row.xv), type: 'scatter', mode: 'markers', name: currentLang === 'es' ? 'Post-feed' : 'Post-feed', marker: { size: 10, color: '#FF9500', symbol: 'diamond' } }
+  ], {
+    margin: { l: 65, r: 20, t: 10, b: 55 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(242,242,247,0.6)',
+    hovermode: 'x unified',
+    legend: { orientation: 'h', y: 1.14, x: 0 },
+    xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
+    yaxis: { title: t('plotYGrowth'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)' },
+    shapes: feedShapes
+  }, { responsive: true, displaylogo: false });
+
+  Plotly.newPlot('fedMetPlot', [
+    { x: data.map((row) => row.day), y: data.map((row) => row.glc_mM), type: 'scatter', mode: 'lines+markers', connectgaps: false, name: t('traceGlc'), line: { color: '#FF9500', width: 3 }, marker: { size: 8, color: '#C75300' } },
+    { x: data.map((row) => row.day), y: data.map((row) => row.lac_mM), type: 'scatter', mode: 'lines+markers', connectgaps: false, name: t('traceLac'), line: { color: '#5AC8FA', width: 3 }, marker: { size: 8, color: '#0062CC' } },
+    { x: data.map((row) => row.day), y: data.map((row) => row.product_mgL), type: 'scatter', mode: 'lines+markers', connectgaps: false, name: t('traceProd'), yaxis: 'y2', line: { color: '#FF3B30', width: 3 }, marker: { size: 8, color: '#C0003C' } }
+  ], {
+    margin: { l: 65, r: 70, t: 10, b: 55 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(242,242,247,0.6)',
+    hovermode: 'x unified',
+    legend: { orientation: 'h', y: 1.14, x: 0 },
+    xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
+    yaxis: { title: t('plotYSubs'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)' },
+    yaxis2: { title: t('plotYProd'), overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false },
+    shapes: feedShapes
+  }, { responsive: true, displaylogo: false });
 }
 
-// ── Module switching ──
-let activeModule = 'teaching';
-function switchModule(name) {
-  activeModule = name;
-  const t1 = el('seccion-1');
-  const t2 = el('seccion-2');
-  const btn1 = el('tabTeaching');
-  const btn2 = el('tabSimulation');
-  if (t1) t1.style.display = name === 'teaching' ? '' : 'none';
-  if (t2) t2.style.display = name === 'simulation' ? '' : 'none';
-  if (btn1) { btn1.classList.toggle('active', name === 'teaching'); btn1.setAttribute('aria-selected', String(name === 'teaching')); }
-  if (btn2) { btn2.classList.toggle('active', name === 'simulation'); btn2.setAttribute('aria-selected', String(name === 'simulation')); }
-  // Update scale toggle button visual state
-  if (name === 'teaching') {
-    const linBtn = el('dataLinearBtn');
-    const logBtn = el('dataLogBtn');
-    if (linBtn && logBtn) {
-      linBtn.classList.toggle('btn-scale-active', growthScale === 'linear');
-      logBtn.classList.toggle('btn-scale-active', growthScale === 'log');
-    }
-  } else if (name === 'simulation') {
-    renderLogIvcdSection();
-  }
+function fillFedAuditTable() {
+  el('fedTableBody').innerHTML = fedAuditRows.map((row) => {
+    const status = row.status === 'skip'
+      ? (currentLang === 'es' ? 'Excluir' : 'Exclude')
+      : (currentLang === 'es' ? 'Usar' : 'Use');
+    const method = row.method === 'batch'
+      ? (currentLang === 'es' ? 'Concentración + IVCD' : 'Concentration + IVCD')
+      : row.method === 'fed_mass'
+        ? (currentLang === 'es' ? 'Masas + ITVC' : 'Masses + ITVC')
+        : (currentLang === 'es' ? 'Evento de feed' : 'Feed event');
+    return `
+      <tr>
+        <td>${fmt(row.start.day, 1)}–${fmt(row.end.day, 1)}</td>
+        <td>${status}</td>
+        <td>${method}</td>
+        <td class="mono">${fmt(row.mu, 4)}</td>
+        <td>${row.note}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
-// ── Interval selector rendering ──
-function renderIntervalSelector() {
-  const n = rawData.length;
-
-  // Update range track
-  const rangeTrack = el('timelineRangeTrack');
-  if (rangeTrack) {
-    const leftPct = (activeStart / (n - 1)) * 100;
-    const rightPct = (activeEnd / (n - 1)) * 100;
-    rangeTrack.style.left = leftPct + '%';
-    rangeTrack.style.width = (rightPct - leftPct) + '%';
+function currentCompareInterval() {
+  if (compareSource === 'batch') {
+    const r = activeBatchInterval();
+    return { ...r, sourceNote: currentLang === 'es' ? 'Usando el intervalo activo de lote.' : 'Using the active batch interval.' };
   }
-
-  // Render node circles
-  const nodeRow = el('timelineNodeRow');
-  if (nodeRow) {
-    nodeRow.innerHTML = rawData.map((d, idx) => {
-      const isStart = idx === activeStart;
-      const isEnd = idx === activeEnd;
-      const inRange = idx > activeStart && idx < activeEnd;
-      let bg, border, color, scale = '';
-      if (isStart) { bg='#5856D6'; border='#5856D6'; color='white'; scale='transform:scale(1.2);'; }
-      else if (isEnd) { bg='#3634A3'; border='#3634A3'; color='white'; scale='transform:scale(1.2);'; }
-      else if (inRange) { bg='rgba(88,86,214,0.12)'; border='rgba(88,86,214,0.4)'; color='#5856D6'; }
-      else { bg='white'; border='rgba(0,0,0,0.12)'; color='rgba(60,60,67,0.5)'; }
-      return `<div onclick="handleTimelineClick(${idx})" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 2px 8px rgba(0,0,0,0.1);border:2px solid ${border};background:${bg};color:${color};${scale}">${d.day}</div>`;
-    }).join('');
-  }
-
-  // Render timeline labels
-  const labelRow = el('timelineLabelRow');
-  if (labelRow) {
-    labelRow.innerHTML = rawData.map((d, idx) => {
-      const isActive = idx === activeStart || idx === activeEnd;
-      return `<span style="font-size:11px;font-weight:${isActive?'700':'500'};color:${isActive?'#5856D6':'rgba(60,60,67,0.4)'};text-align:center;line-height:1.2;">${t('dayLabel')}<br>${d.day}</span>`;
-    }).join('');
-  }
-
-  // Render start buttons
-  const startBtnRow = el('startBtnRow');
-  if (startBtnRow) {
-    startBtnRow.innerHTML = rawData.slice(0, -1).map((d, idx) => {
-      const isActive = idx === activeStart;
-      const sty = isActive
-        ? 'background:#5856D6;color:white;border:1px solid #5856D6;box-shadow:0 3px 10px rgba(88,86,214,0.35);'
-        : 'background:rgba(255,255,255,0.85);color:rgba(0,0,0,0.7);border:1px solid rgba(0,0,0,0.1);';
-      return `<button onclick="setIntervalStart(${idx})" style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${d.day}</button>`;
-    }).join('');
-  }
-
-  // Render end buttons
-  const endBtnRow = el('endBtnRow');
-  if (endBtnRow) {
-    endBtnRow.innerHTML = rawData.slice(1).map((d, idx) => {
-      const realIdx = idx + 1;
-      const isActive = realIdx === activeEnd;
-      const isDisabled = realIdx <= activeStart;
-      let sty;
-      if (isActive) sty = 'background:#3634A3;color:white;border:1px solid #3634A3;box-shadow:0 3px 10px rgba(54,52,163,0.35);';
-      else if (isDisabled) sty = 'background:transparent;color:rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.05);cursor:not-allowed;opacity:0.5;';
-      else sty = 'background:rgba(255,255,255,0.85);color:rgba(0,0,0,0.7);border:1px solid rgba(0,0,0,0.1);';
-      return `<button onclick="setIntervalEnd(${realIdx})" ${isDisabled?'disabled':''} style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${d.day}</button>`;
-    }).join('');
-  }
-
-  // Update scale toggle button active state
-  const linBtn = el('dataLinearBtn');
-  const logBtn = el('dataLogBtn');
-  if (linBtn && logBtn) {
-    linBtn.classList.toggle('btn-scale-active', growthScale === 'linear');
-    logBtn.classList.toggle('btn-scale-active', growthScale === 'log');
-  }
+  const r = activeFedIntervalData();
+  return {
+    ...r,
+    sourceNote: r.method === 'batch'
+      ? (currentLang === 'es' ? 'Usando un intervalo pre-feed de lote alimentado, todavía interpretable con IVCD.' : 'Using a pre-feed fed-batch interval, still interpretable with IVCD.')
+      : (currentLang === 'es' ? 'Usando un intervalo post-feed: la comparación mostrada es solo sobre Xv; el método exacto post-feed requeriría ITVC.' : 'Using a post-feed interval: the shown comparison is only on Xv; exact post-feed normalization would require ITVC.')
+  };
 }
 
-function handleTimelineClick(idx) {
-  if (idx === 0 || idx < activeEnd) {
-    activeStart = idx;
-    if (activeEnd <= activeStart) activeEnd = Math.min(activeStart + 1, rawData.length - 1);
-  } else {
-    activeEnd = idx;
-    if (activeStart >= activeEnd) activeStart = Math.max(0, activeEnd - 1);
+function renderCompareSection() {
+  const r = currentCompareInterval();
+  const diffPct = r.ivcdLog ? ((r.ivcd - r.ivcdLog) / r.ivcdLog) * 100 : null;
+  el('trapIvcdOut').textContent = `${fmt(r.ivcd, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}`;
+  el('logIvcdOut').textContent = `${fmt(r.ivcdLog, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}`;
+  el('logMeanOut').textContent = `${fmt(r.logMean, 3)} ×10⁶ ${currentLang === 'es' ? 'cél/mL' : 'cells/mL'}`;
+  el('ivcdDiffOut').textContent = diffPct === null ? t('noData') : `${fmt(diffPct, 2)} %`;
+  el('logIvcdExplain').innerHTML =
+    `L(X_0,X_1) = (${fmt(r.x2, 3)} − ${fmt(r.x1, 3)}) / ln(${fmt(r.x2, 3)} / ${fmt(r.x1, 3)}) = <strong>${fmt(r.logMean, 3)}</strong><br>` +
+    `IVCD_{log} = ${fmt(r.logMean, 3)} × ${fmt(r.dtD, 2)} d = <strong>${fmt(r.ivcdLog, 3)}</strong><br>` +
+    `IVCD_{trap} = <strong>${fmt(r.ivcd, 3)}</strong>`;
+  el('logIvcdCompare').textContent = `${r.sourceNote} ${currentLang === 'es' ? 'La diferencia relativa entre ambos métodos es' : 'The relative difference between both methods is'} ${fmt(Math.abs(diffPct), 2)} %.`;
+
+  const samples = 60;
+  const xs = [];
+  const expYs = [];
+  const linYs = [];
+  const lnRatio = Math.log(r.x2 / r.x1);
+  for (let i = 0; i <= samples; i++) {
+    const f = i / samples;
+    const day = r.t1 + (r.dtD * f);
+    xs.push(day);
+    expYs.push(r.x1 * Math.exp(lnRatio * f));
+    linYs.push(r.x1 + ((r.x2 - r.x1) * f));
   }
-  renderIntervalSelector();
-  redrawExplanation();
+
+  Plotly.newPlot('comparePlot', [
+    { x: xs, y: expYs, type: 'scatter', mode: 'lines', name: currentLang === 'es' ? 'Exponencial exacta' : 'Exact exponential', line: { color: '#0062CC', width: 3 }, fill: 'tozeroy', fillcolor: 'rgba(0,98,204,0.12)' },
+    { x: xs, y: linYs, type: 'scatter', mode: 'lines', name: currentLang === 'es' ? 'Interpolación lineal' : 'Linear interpolation', line: { color: '#1A8A3A', width: 3, dash: 'dash' } },
+    { x: [r.t1, r.t2], y: [r.x1, r.x2], type: 'scatter', mode: 'markers', name: currentLang === 'es' ? 'Datos medidos' : 'Measured data', marker: { color: '#3634A3', size: 9 } }
+  ], {
+    margin: { l: 68, r: 24, t: 10, b: 55 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(242,242,247,0.6)',
+    hovermode: 'x unified',
+    legend: { orientation: 'h', y: 1.14, x: 0 },
+    xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
+    yaxis: { title: t('plotYGrowth'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)' }
+  }, { responsive: true, displaylogo: false });
+
+  el('compareBatchBtn').classList.toggle('btn-scale-active', compareSource === 'batch');
+  el('compareFedBtn').classList.toggle('btn-scale-active', compareSource === 'fed');
 }
 
-function setIntervalStart(idx) {
-  activeStart = idx;
-  if (activeEnd <= activeStart) activeEnd = Math.min(activeStart + 1, rawData.length - 1);
-  renderIntervalSelector();
-  redrawExplanation();
+function renderAll() {
+  populateBatchControls();
+  renderBatchMetrics();
+  drawBatchPlots();
+  fillBatchTable();
+  populateFedControls();
+  renderFedSection();
+  drawFedPlots();
+  fillFedAuditTable();
+  renderCompareSection();
+  if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
 }
 
-function setIntervalEnd(idx) {
-  if (idx <= activeStart) return;
-  activeEnd = idx;
-  renderIntervalSelector();
-  redrawExplanation();
-}
-
-// ── Translations ──
 function applyTranslations() {
   document.documentElement.lang = currentLang;
   document.title = t('title');
-  const ids = [
-    'brandTag','heroTitle','heroLead','repoBtn',
-    'section1Chip','section1Title','section1Lead',
-    'intervalSelectorTitle','intervalSelectorDesc','intervalExampleNote',
-    'startRowLabel','endRowLabel',
-    'plot1Title','plot1Lead','plot2Title','plot2Lead',
-    'mLabelDt','mLabelMu','mLabelIvcd','mLabelQglc','mLabelQLac','mLabelQp',
-    'formulaMainTitle','formulaMainLead','formulaChip',
-    'muTitle','muWarn','muLead','ivcdTitle','ivcdWarn','ivcdLead','ivcdRef',
-    'qglcTitle','qglcWarn','qglcLead','qpTitle','qpWarn','qpLead',
-    'yieldTitle','yieldWarn','yieldLead','apparentTitle','apparentCopy','realTitle','realCopy',
-    'stepsTitle','step1Badge','step1Title','step1Copy','step2Badge','step2Title','step2Copy',
-    'step3Badge','step3Title','step3Copy','step4Badge','step4Title','step4Copy',
-    'section2Chip','section2Title','section2Lead',
-    'logIvcdSectionTitle','logIvcdSectionLead','logIvcdHowTitle','logIvcdHowCopy',
-    'logIvcdMetric1','logIvcdMetric2','logIvcdMetric3','logIvcdMetric4',
-    'logIvcdExplainTitle','logIvcdExplainLead','logIvcdPlotTitle','logIvcdPlotLead',
-    'tableTitle','tableLead','csvBtn',
-    'thInterval','thXv1','thXv2','thGlc1','thGlc2','thLac1','thLac2',
-    'thP1','thP2','thDt','thMu','thIvcd','thRglc','thQglc','thRlac','thQlac','thQp','thYx','thYp',
-    'footerText'
-  ];
-  ids.forEach(id => {
+  [
+    'heroTitle','heroLead','navBatchLabel','navFedLabel','navCompareLabel','section1Chip','section1Title','section1Lead',
+    'batchSelectorTitle','batchSelectorDesc','startRowLabel','endRowLabel','mLabelDt','mLabelMu','mLabelIvcd','mLabelQglc','mLabelQLac','mLabelQp',
+    'intervalExampleNote','plot1Title','plot1Lead','plot2Title','plot2Lead','formulaMainTitle','formulaMainLead','formulaChip',
+    'muTitle','muLead','ivcdTitle','ivcdLead','qglcTitle','qglcLead','yieldTitle','yieldLead','tableTitle','tableLead','csvBtn',
+    'section2Chip','section2Title','section2Lead','fedSelectorTitle','fedSelectorLead','fedSelectorLabel','fedMetricMode','fedMetricMu','fedMetricNorm','fedMetricQglc','fedMetricQlac','fedMetricQp',
+    'fedHowTitle','fedHowCopy','fedExplainTitle','fedExplainLead','fedPlot1Title','fedPlot1Lead','fedPlot2Title','fedPlot2Lead','fedTableTitle','fedTableLead',
+    'fedThInterval','fedThStatus','fedThMethod','fedThMu','fedThNote',
+    'section3Chip','section3Title','section3Lead','compareTitle','compareLead','compareMetric1','compareMetric2','compareMetric3','compareMetric4',
+    'logIvcdHowTitle','logIvcdHowCopy','logIvcdExplainTitle','logIvcdExplainLead','logIvcdPlotTitle','logIvcdPlotLead',
+    'compareBatchBtn','compareFedBtn'
+  ].forEach((id) => {
     const node = el(id);
     if (node) node.innerHTML = t(id);
   });
   el('langBtn').textContent = t('langBtn');
   el('dataLinearBtn').textContent = t('linearBtn');
   el('dataLogBtn').textContent = t('logBtn');
-  // Update tab labels
-  const tl = el('tabTeachingLabel');
-  if (tl) tl.textContent = t('moduleTeaching');
-  const sl = el('tabSimulationLabel');
-  if (sl) sl.textContent = t('moduleSimulation');
-  const tabTeachingBtn = el('tabTeaching');
-  const tabSimulationBtn = el('tabSimulation');
-  if (tabTeachingBtn) tabTeachingBtn.title = t('tabTeachingTooltip');
-  if (tabSimulationBtn) tabSimulationBtn.title = t('tabSimulationTooltip');
-  ['continuous1','continuous2','continuous3','continuous4','continuous5'].forEach(id => { const n = el(id); if(n) n.innerHTML = t('continuous'); });
-  ['discrete1','discrete2','discrete3','discrete4','discrete5'].forEach(id => { const n = el(id); if(n) n.innerHTML = t('discrete'); });
-  [1, 2].forEach(i => {
-    const lbl = el(`authorLabel${i}`); if (lbl) lbl.textContent = t('authorLabel');
-    const nm  = el(`authorName${i}`);  if (nm)  nm.textContent  = t('authorName');
-    const rol = el(`authorRole${i}`);  if (rol) rol.textContent  = t('authorRole');
-  });
-  populateControls();
-  setSelectionModeText();
-  fillTable();
-  renderDerivedText();
-  renderLogIvcdSection();
-  drawDataPlots();
-  renderIntervalSelector();
-  if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
+  el('thInterval').textContent = t('thInterval');
+  el('thXv1').textContent = t('thXv1');
+  el('thXv2').textContent = t('thXv2');
+  el('thGlc1').textContent = t('thGlc1');
+  el('thGlc2').textContent = t('thGlc2');
+  el('thLac1').textContent = t('thLac1');
+  el('thLac2').textContent = t('thLac2');
+  el('thP1').textContent = t('thP1');
+  el('thP2').textContent = t('thP2');
+  el('thDt').textContent = t('thDt');
+  el('thMu').textContent = t('thMu');
+  el('thIvcd').textContent = t('thIvcd');
+  el('thQglc').textContent = t('thQglc');
+  el('thQlac').textContent = t('thQlac');
+  el('thQp').textContent = t('thQp');
+  el('thYx').textContent = t('thYx');
+  el('thYp').textContent = t('thYp');
+  const fedMeta = buildFedMetadata(datasets.fed);
+  fedIntervals = fedMeta.validIntervals;
+  fedAuditRows = fedMeta.audit;
+  if (fedActiveInterval >= fedIntervals.length) fedActiveInterval = 0;
+  renderAll();
 }
 
-// ── Init ──
-function init() {
-  // Tab switching (remove onclick from HTML, bind here)
-  el('tabTeaching').addEventListener('click', () => switchModule('teaching'));
-  el('tabSimulation').addEventListener('click', () => switchModule('simulation'));
+function downloadBatchCSV() {
+  const rows = batchRows();
+  const header = ['interval','Xv1','Xv2','Glc1_mM','Glc2_mM','Lac1_mM','Lac2_mM','P1_mgL','P2_mgL','dt_d','mu_h-1','IVCD_delta','qGlc','qLac','qP','Yx_Glc','Yp_Glc'];
+  const body = rows.map((r) => [r.label, r.x1, r.x2, r.glc1, r.glc2, r.lac1, r.lac2, r.p1, r.p2, r.dtD, r.mu, r.ivcd, r.qGlc, r.qLac, r.qP, r.yxGlc, r.ypGlc]);
+  const csv = [header, ...body].map((row) => row.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'kinetic_drive_lote.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
-  if (el('pairSelect')) {
-    el('pairSelect').addEventListener('change', (e) => {
-      const idx = parseInt(e.target.value, 10);
-      const pair = pairIntervals[idx];
-      activeStart = pair.start;
-      activeEnd = pair.end;
-      el('startSelect').value = String(activeStart);
-      el('endSelect').value = String(activeEnd);
-      redrawExplanation();
-    });
+window.setBatchRange = (idx) => {
+  if (idx <= batchStart) {
+    batchStart = idx;
+    if (batchEnd <= batchStart) batchEnd = Math.min(batchStart + 1, datasets.batch.length - 1);
+  } else {
+    batchEnd = idx;
   }
-  if (el('startSelect')) el('startSelect').addEventListener('change', updateFromCustom);
-  if (el('endSelect')) el('endSelect').addEventListener('change', updateFromCustom);
+  renderAll();
+};
+
+window.setBatchStart = (idx) => {
+  batchStart = idx;
+  if (batchEnd <= batchStart) batchEnd = Math.min(batchStart + 1, datasets.batch.length - 1);
+  renderAll();
+};
+
+window.setBatchEnd = (idx) => {
+  if (idx <= batchStart) return;
+  batchEnd = idx;
+  renderAll();
+};
+
+async function init() {
+  datasets.batch = await loadDataset('./Datos_lote.csv');
+  datasets.fed = await loadDataset('./Datos_lote_alimentado.csv');
+  const fedMeta = buildFedMetadata(datasets.fed);
+  fedIntervals = fedMeta.validIntervals;
+  fedAuditRows = fedMeta.audit;
 
   el('dataLinearBtn').addEventListener('click', () => {
     growthScale = 'linear';
     el('dataLinearBtn').classList.add('btn-scale-active');
     el('dataLogBtn').classList.remove('btn-scale-active');
-    drawDataPlots();
+    drawBatchPlots();
   });
   el('dataLogBtn').addEventListener('click', () => {
     growthScale = 'log';
     el('dataLogBtn').classList.add('btn-scale-active');
     el('dataLinearBtn').classList.remove('btn-scale-active');
-    drawDataPlots();
+    drawBatchPlots();
   });
-
-  el('csvBtn').addEventListener('click', downloadCSV);
   el('langBtn').addEventListener('click', () => {
     currentLang = currentLang === 'es' ? 'en' : 'es';
     applyTranslations();
   });
+  el('csvBtn').addEventListener('click', downloadBatchCSV);
+  el('fedIntervalSelect').addEventListener('change', (e) => {
+    fedActiveInterval = Number.parseInt(e.target.value, 10);
+    renderFedSection();
+    renderCompareSection();
+  });
+  el('compareBatchBtn').addEventListener('click', () => {
+    compareSource = 'batch';
+    renderCompareSection();
+  });
+  el('compareFedBtn').addEventListener('click', () => {
+    compareSource = 'fed';
+    renderCompareSection();
+  });
 
-  switchModule('teaching');
-  populateControls();
-  fillTable();
-  setSelectionModeText();
-  renderDerivedText();
-  renderLogIvcdSection();
-  drawDataPlots();
-  renderIntervalSelector();
-  if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
+  applyTranslations();
 }
 
-init();
+init().catch((error) => {
+  console.error(error);
+  document.body.insertAdjacentHTML('beforeend', `<div style="position:fixed;bottom:16px;left:16px;right:16px;padding:12px 14px;border-radius:14px;background:#fff3cd;color:#5c4400;border:1px solid #f3d57a;z-index:9999;">${currentLang === 'es' ? 'No se pudieron cargar los datasets CSV.' : 'The CSV datasets could not be loaded.'}</div>`);
+});

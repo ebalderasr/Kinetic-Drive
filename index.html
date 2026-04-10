@@ -24,8 +24,6 @@
   <link rel="stylesheet" href="./src/css/app.css" />
 </head>
 <body>
-
-  <!-- Animated mesh gradient background -->
   <div aria-hidden="true" class="mesh-bg">
     <div class="mesh-orb mesh-orb-1"></div>
     <div class="mesh-orb mesh-orb-2"></div>
@@ -34,7 +32,6 @@
     <div class="mesh-orb mesh-orb-5"></div>
   </div>
 
-  <!-- ══ HEADER ══ -->
   <header class="app-header">
     <div class="hc-header">
       <div class="hc-header-brand">
@@ -42,66 +39,51 @@
         <div class="hc-header-text">
           <div class="hc-title-line">
             <h1 id="heroTitle">Kinetic Drive</h1>
-            <p id="heroLead" class="hc-tagline">
-              Recurso interactivo para enseñar cinética y estequiometría en cultivos de células de mamífero
-            </p>
+            <p id="heroLead" class="hc-tagline">Recurso interactivo para enseñar cinética y estequiometría en cultivos en lote y lote alimentado</p>
           </div>
         </div>
       </div>
 
       <nav class="hc-header-right">
-          <button id="langBtn" class="btn btn-ghost" type="button">ES / EN</button>
-          <a class="hc-suite-pill" href="https://www.hostcell.app" target="_blank" rel="noopener noreferrer">
-            <span class="hc-suite-label">HostCell Lab Suite</span>
-          </a>
+        <button id="langBtn" class="btn btn-ghost" type="button">ES / EN</button>
+        <a class="hc-suite-pill" href="https://www.hostcell.app" target="_blank" rel="noopener noreferrer">
+          <span class="hc-suite-label">HostCell Lab Suite</span>
+        </a>
       </nav>
     </div>
   </header>
 
   <div class="hc-subheader">
     <div class="hc-subheader-inner">
-      <div class="segmented-control" role="tablist">
-        <button id="tabTeaching" class="seg-btn active" role="tab" aria-selected="true"
-          title="Explicación y ejemplo con datos reales">
-          📚 <span id="tabTeachingLabel">Enseñanza</span>
-        </button>
-        <button id="tabSimulation" class="seg-btn" role="tab" aria-selected="false"
-          title="IVCD logarítmico bajo crecimiento exponencial">
-          ∫ <span id="tabSimulationLabel">IVCD logarítmico</span>
-        </button>
+      <div class="segmented-control" role="navigation" aria-label="Secciones">
+        <a id="navBatch" class="seg-btn active" href="#seccion-lote">🧪 <span id="navBatchLabel">Lote</span></a>
+        <a id="navFed" class="seg-btn" href="#seccion-fed">🧫 <span id="navFedLabel">Lote alimentado</span></a>
+        <a id="navCompare" class="seg-btn" href="#seccion-compare">∫ <span id="navCompareLabel">IVCD</span></a>
       </div>
     </div>
   </div>
 
-  <!-- ══ MAIN ══ -->
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-
-    <!-- ━━━━━━━━━━━━━━━ TEACHING MODULE ━━━━━━━━━━━━━━━ -->
-    <section id="seccion-1" class="module-shell module-shell-teaching space-y-6">
-
-      <!-- Section band -->
+    <section id="seccion-lote" class="module-shell module-shell-teaching space-y-6">
       <div class="section-band">
         <div>
-          <div id="section1Chip" class="chip chip-indigo">Sección 1 · Enseñanza</div>
-          <h2 id="section1Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">Fundamentos, fórmulas y ejemplo de cálculo</h2>
-          <p id="section1Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección está pensada para aprender de dónde salen los parámetros, cómo se calculan con datos discretos y cómo se interpretan en un cultivo CHO antes de pasar al bloque de IVCD logarítmico.</p>
+          <div id="section1Chip" class="chip chip-indigo">Sección 1 · Lote</div>
+          <h2 id="section1Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">Cálculos en cultivo en lote</h2>
+          <p id="section1Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección usa <code>Datos_lote.csv</code>. La primera fila del archivo se ignora como metadato y todas las tasas se calculan con base en concentración e IVCD, como en un cultivo sin alimentación.</p>
         </div>
       </div>
 
-      <!-- ── INTERVAL SELECTOR ── -->
-      <div class="card interval-selector" id="explicacion">
-        <!-- Title row -->
+      <div class="card interval-selector">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div class="interval-title">
               <span style="font-size:1.2rem;">🗓️</span>
-              <span id="intervalSelectorTitle">Intervalo de cálculo</span>
+              <span id="batchSelectorTitle">Intervalo de lote</span>
             </div>
-            <p id="intervalSelectorDesc" class="interval-desc">Selecciona el tramo de tiempo para calcular μ, IVCD, tasas específicas y rendimientos.</p>
+            <p id="batchSelectorDesc" class="interval-desc">Selecciona cualquier tramo del cultivo en lote para calcular μ, IVCD, qGlc, qLac, qP y rendimientos aparentes.</p>
           </div>
         </div>
 
-        <!-- Visual timeline -->
         <div class="timeline-wrap">
           <div class="timeline-track-bg">
             <div id="timelineRangeTrack" class="timeline-track-range" style="left:0%;width:20%;"></div>
@@ -110,7 +92,6 @@
         </div>
         <div id="timelineLabelRow" class="timeline-label-row"></div>
 
-        <!-- Start / End button rows -->
         <div class="mt-4 space-y-3">
           <div class="interval-row">
             <span id="startRowLabel" class="interval-row-label">Inicio</span>
@@ -122,38 +103,23 @@
           </div>
         </div>
 
-        <!-- Hidden elements kept for JS compatibility -->
-        <div hidden aria-hidden="true">
-          <span id="selectedRangeOut"></span>
-          <span id="dGlcOut"></span><span id="dLacOut"></span><span id="dProdOut"></span>
-        </div>
         <div class="mt-5 grid gap-3 grid-cols-2 sm:grid-cols-3">
           <div class="metric-compact"><div id="mLabelDt" class="label">Δt</div><div id="deltaTimeOut" class="value mono">—</div></div>
-          <div class="metric-compact"><div id="mLabelMu" class="label">&mu;</div><div id="muOut" class="value mono" style="color:#1A8A3A;">—</div></div>
+          <div class="metric-compact"><div id="mLabelMu" class="label">μ</div><div id="muOut" class="value mono" style="color:#1A8A3A;">—</div></div>
           <div class="metric-compact"><div id="mLabelIvcd" class="label">IVCD</div><div id="ivcdOutCompact" class="value mono" style="color:#0066CC;">—</div></div>
           <div class="metric-compact"><div id="mLabelQglc" class="label">qGlc</div><div id="qGlcOut" class="value mono" style="color:#C75300;">—</div></div>
           <div class="metric-compact"><div id="mLabelQLac" class="label">qLac</div><div id="qLacOut" class="value mono" style="color:#5AC8FA;">—</div></div>
           <div class="metric-compact"><div id="mLabelQp" class="label">qP</div><div id="qPOut" class="value mono" style="color:#C0003C;">—</div></div>
         </div>
-
-        <p id="intervalExampleNote" class="inline-note mt-4">Ejemplo guiado con un intervalo fijo de muestreo para no saturar la vista.</p>
-
-        <!-- Hidden elements for JS compatibility -->
-        <div class="hidden" aria-hidden="true">
-          <select id="pairSelect"></select>
-          <select id="startSelect"></select>
-          <select id="endSelect"></select>
-          <span id="selectionModeText"></span>
-        </div>
+        <p id="intervalExampleNote" class="inline-note mt-4">El lote se interpreta completamente con cambios de concentración e IVCD trapezoidal.</p>
       </div>
 
-      <!-- ── Plots grid ── -->
       <div class="grid gap-6 lg:grid-cols-2">
         <section class="card p-4">
           <div class="flex items-start justify-between gap-3">
             <div>
               <h3 id="plot1Title" class="text-lg font-black">Curva de crecimiento e IVCD</h3>
-              <p id="plot1Lead" class="subtle mt-1">El área sombreada corresponde al tramo de ejemplo usado para calcular la IVCD digital.</p>
+              <p id="plot1Lead" class="subtle mt-1">El área sombreada corresponde al intervalo activo del cultivo en lote.</p>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
               <button id="dataLinearBtn" class="btn btn-glass btn-sm btn-scale-active" type="button">Xv lineal</button>
@@ -166,97 +132,58 @@
         <section class="card p-4">
           <div>
             <h3 id="plot2Title" class="text-lg font-black">Sustratos y producto</h3>
-            <p id="plot2Lead" class="subtle mt-1">Cuando pasas el cursor sobre cualquiera de las dos gráficas, la referencia temporal se sincroniza en ambas.</p>
+            <p id="plot2Lead" class="subtle mt-1">Glucosa, lactato y producto se mantienen sincronizados con la referencia temporal del crecimiento.</p>
           </div>
           <div id="metPlotData" class="plot-box mt-4"></div>
         </section>
       </div>
 
-      <!-- ── Formula cards ── -->
       <section class="card p-5 sm:p-6" id="formulas">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 id="formulaMainTitle" class="section-title">Cómo se calcula cada parámetro</h2>
-            <p id="formulaMainLead" class="section-copy mt-2 max-w-4xl">En cada bloque se muestra primero una forma continua, que nace del balance o de la definición formal del parámetro, y después una forma discreta, que es la que realmente se usa al trabajar con datos digitales obtenidos por muestreo.</p>
+            <h2 id="formulaMainTitle" class="section-title">Cómo se calcula en lote</h2>
+            <p id="formulaMainLead" class="section-copy mt-2 max-w-4xl">En lote, cada intervalo se interpreta con base en concentración. La normalización se hace con IVCD y no se requieren datos de volumen.</p>
           </div>
-          <div id="formulaChip" class="chip chip-indigo" style="flex-shrink:0;">Versión continua + versión discreta</div>
+          <div id="formulaChip" class="chip chip-indigo" style="flex-shrink:0;">Base concentración + IVCD</div>
         </div>
 
         <div class="mt-6 grid gap-4 lg:grid-cols-2">
           <article class="formula-card">
-            <div class="formula-title" style="color:#3634A3;"><span id="muTitle">¿Qué es y cómo se calcula μ?</span><details class="warn-toggle"><summary>!</summary><div id="muWarn" class="warn-popup">μ se calcula aquí por intervalo y no como una sola constante global. Esto es útil porque en cultivos CHO el crecimiento cambia con la fase del cultivo, la disponibilidad de nutrientes y la pérdida de viabilidad.</div></details></div>
-            <p id="muLead" class="formula-sub">La velocidad específica de crecimiento describe qué tan rápido cambia la biomasa viable en términos relativos.</p>
-            <p id="continuous1" class="formula-sub mt-3"><strong>Forma continua</strong></p>
-            <div class="equation">$$\frac{dX_v}{dt}=\mu X_v$$</div>
-            <p id="discrete1" class="formula-sub mt-3"><strong>Con datos discretos</strong></p>
-            <div class="equation">$$\mu\approx\frac{\ln(X_{v,2})-\ln(X_{v,1})}{t_2-t_1}$$</div>
+            <div class="formula-title" style="color:#3634A3;"><span id="muTitle">Crecimiento específico</span></div>
+            <p id="muLead" class="formula-sub">μ siempre se calcula con densidad celular viable, no con conteo total.</p>
+            <div class="equation">$$\mu=\frac{\ln(X_{v,2}/X_{v,1})}{\Delta t}$$</div>
             <p id="muExplain" class="mt-3 text-sm leading-7 mono" style="color:var(--label);"></p>
           </article>
 
           <article class="formula-card">
-            <div class="formula-title" style="color:#0062CC;"><span id="ivcdTitle">IVCD: el puente entre concentración y célula</span><details class="warn-toggle"><summary>!</summary><div id="ivcdWarn" class="warn-popup">La IVCD es particularmente útil en cultivos de mamífero porque el proceso dura varios días y la biomasa viable cambia de manera importante durante la corrida. En sistemas microbianos rápidos, a menudo se trabaja más directamente con derivadas locales, fases exponenciales bien definidas o balances de sustrato más cerrados.</div></details></div>
-            <p id="ivcdLead" class="formula-sub">La IVCD integra la biomasa viable en el tiempo. Por eso sirve para normalizar consumos o producción y estimar cuánto hizo una célula promedio durante un tramo dado.</p>
-            <p id="continuous2" class="formula-sub mt-3"><strong>Forma continua</strong></p>
-            <div class="equation">$$IVCD=\int X_v(t)\,dt$$</div>
-            <p id="discrete2" class="formula-sub mt-3"><strong>Con datos discretos</strong></p>
-            <div class="equation">$$IVCD_{\Delta t}\approx\sum_i\left(\frac{X_{v,i}+X_{v,i+1}}{2}\right)(t_{i+1}-t_i)$$</div>
+            <div class="formula-title" style="color:#0062CC;"><span id="ivcdTitle">IVCD trapezoidal</span></div>
+            <p id="ivcdLead" class="formula-sub">En lote, el normalizador de las tasas específicas es la densidad celular viable integral.</p>
+            <div class="equation">$$IVCD_{\Delta t}\approx\sum_i \left(\frac{X_{v,i}+X_{v,i+1}}{2}\right)(t_{i+1}-t_i)$$</div>
             <p id="ivcdExplain" class="mt-3 text-sm leading-7 mono" style="color:var(--label);"></p>
-            <p id="ivcdRef" class="small-ref">Ejemplos de uso de IVCD/IVCC en cultivo de mamífero incluyen Oguchi et al. (2007), Mahé et al. (2021) y Schellenberg et al. (2022).</p>
           </article>
 
           <article class="formula-card">
-            <div class="formula-title" style="color:#C75300;"><span id="qglcTitle">Consumo volumétrico y consumo específico</span><details class="warn-toggle"><summary>!</summary><div id="qglcWarn" class="warn-popup">r y q no responden a la misma pregunta. r describe el cambio observado por volumen de cultivo; q intenta estimar el comportamiento medio por célula viable en el tramo analizado.</div></details></div>
-            <p id="qglcLead" class="formula-sub">La tasa volumétrica de consumo indica cuánto cambia la concentración en el reactor. El consumo específico divide ese cambio entre la IVCD del tramo.</p>
-            <p id="continuous3" class="formula-sub mt-3"><strong>Forma continua</strong></p>
-            <div class="equation">$$\frac{dS}{dt}=-r_S,\qquad \frac{dS}{dt}=-q_SX_v$$</div>
-            <p id="discrete3" class="formula-sub mt-3"><strong>Con datos discretos</strong></p>
-            <div class="equation">$$r_{Glc}\approx\frac{Glc_1-Glc_2}{\Delta t},\qquad q_{Glc}\approx\frac{Glc_1-Glc_2}{IVCD_{\Delta t}}$$</div>
+            <div class="formula-title" style="color:#C75300;"><span id="qglcTitle">Consumo y producción específicos</span></div>
+            <p id="qglcLead" class="formula-sub">En lote, qGlc, qLac y qP se calculan directamente a partir del cambio de concentración dividido entre IVCD.</p>
+            <div class="equation">$$q_{Glc}=\frac{Glc_1-Glc_2}{IVCD_{\Delta t}},\qquad q_{Lac}=\frac{Lac_2-Lac_1}{IVCD_{\Delta t}},\qquad q_{P}=\frac{P_2-P_1}{IVCD_{\Delta t}}$$</div>
             <p id="qGlcExplain" class="mt-3 text-sm leading-7 mono" style="color:var(--label);"></p>
-          </article>
-
-          <article class="formula-card">
-            <div class="formula-title" style="color:#C0003C;"><span id="qpTitle">Tasa de producción específica de producto</span><details class="warn-toggle"><summary>!</summary><div id="qpWarn" class="warn-popup">qP se interpreta mejor cuando el tramo elegido es fisiológicamente coherente. Si mezclas fases muy distintas en un solo cálculo, el valor promedio puede ocultar cambios importantes de productividad.</div></details></div>
-            <p id="qpLead" class="formula-sub">La producción específica intenta responder cuánto producto generó, en promedio, una célula viable durante el tramo seleccionado.</p>
-            <p id="continuous4" class="formula-sub mt-3"><strong>Forma continua</strong></p>
-            <div class="equation">$$\frac{dP}{dt}=q_PX_v$$</div>
-            <p id="discrete4" class="formula-sub mt-3"><strong>Con datos discretos</strong></p>
-            <div class="equation">$$q_P\approx\frac{P_2-P_1}{IVCD_{\Delta t}}$$</div>
             <p id="qPExplain" class="mt-3 text-sm leading-7 mono" style="color:var(--label);"></p>
           </article>
 
-          <article class="formula-card lg:col-span-2">
-            <div class="formula-title" style="color:var(--label);"><span id="yieldTitle">Rendimientos: biomasa/sustrato y producto/sustrato</span><details class="warn-toggle"><summary>!</summary><div id="yieldWarn" class="warn-popup">En cultivos de células de mamífero, y especialmente en medios complejos, estos rendimientos deben leerse como rendimientos aparentes respecto al sustrato elegido. La glucosa no tiene por qué ser la única fuente de carbono o energía consumida en paralelo.</div></details></div>
-            <p id="yieldLead" class="formula-sub">Los rendimientos relacionan el aumento de biomasa o de producto con el sustrato consumido. Son muy útiles para comparar condiciones, pero no siempre representan una estequiometría cerrada del metabolismo real.</p>
-            <div class="mt-4 grid gap-4 lg:grid-cols-2">
-              <div><p id="continuous5" class="formula-sub"><strong>Forma continua</strong></p><div class="equation">$$Y_{X/S}=\frac{dX_v}{-dS},\qquad Y_{P/S}=\frac{dP}{-dS}$$</div></div>
-              <div><p id="discrete5" class="formula-sub"><strong>Con datos discretos</strong></p><div class="equation">$$Y_{X/Glc}\approx\frac{X_{v,2}-X_{v,1}}{Glc_1-Glc_2},\qquad Y_{P/Glc}\approx\frac{P_2-P_1}{Glc_1-Glc_2}$$</div></div>
-            </div>
+          <article class="formula-card">
+            <div class="formula-title" style="color:#C0003C;"><span id="yieldTitle">Rendimientos aparentes</span></div>
+            <p id="yieldLead" class="formula-sub">Los rendimientos en lote se leen como aparentes respecto a glucosa.</p>
+            <div class="equation">$$Y_{X/Glc}\approx\frac{X_{v,2}-X_{v,1}}{Glc_1-Glc_2},\qquad Y_{P/Glc}\approx\frac{P_2-P_1}{Glc_1-Glc_2}$$</div>
             <p id="yieldExplain" class="mt-3 text-sm leading-7 mono" style="color:var(--label);"></p>
-            <div class="mt-4 grid gap-4 lg:grid-cols-2">
-              <div class="equation"><strong id="apparentTitle">Rendimiento aparente</strong><br><span id="apparentCopy">Se obtiene cuando eliges un sustrato medido, por ejemplo glucosa, como único denominador de la relación.</span></div>
-              <div class="equation"><strong id="realTitle">Rendimiento real</strong><br><span id="realCopy">Exigiría un balance más completo de entradas y salidas relevantes de carbono, energía y, en algunos casos, nitrógeno; por eso rara vez se cierra solo con glucosa en medios complejos de mamífero.</span></div>
-            </div>
           </article>
         </div>
       </section>
 
-      <!-- ── Steps summary ── -->
       <section class="card p-5 sm:p-6">
-        <h2 id="stepsTitle" class="section-title">Resumen del flujo de cálculo</h2>
-        <div class="mt-5 grid gap-4 lg:grid-cols-4">
-          <div class="step"><div id="step1Badge" class="text-xs font-extrabold uppercase tracking-widest" style="color:var(--secondary-label);">Paso 1</div><div id="step1Title" class="mt-2 font-black" style="color:var(--sys-indigo);">Medir</div><p id="step1Copy" class="mt-2 text-sm" style="color:var(--secondary-label);">Obtener Xv, glucosa, lactato y producto en tiempos definidos.</p></div>
-          <div class="step"><div id="step2Badge" class="text-xs font-extrabold uppercase tracking-widest" style="color:var(--secondary-label);">Paso 2</div><div id="step2Title" class="mt-2 font-black" style="color:#0062CC;">Integrar</div><p id="step2Copy" class="mt-2 text-sm" style="color:var(--secondary-label);">Calcular IVCD con suma trapezoidal sobre los datos disponibles.</p></div>
-          <div class="step"><div id="step3Badge" class="text-xs font-extrabold uppercase tracking-widest" style="color:var(--secondary-label);">Paso 3</div><div id="step3Title" class="mt-2 font-black" style="color:#C75300;">Normalizar</div><p id="step3Copy" class="mt-2 text-sm" style="color:var(--secondary-label);">Obtener r, q y rendimientos para el tramo de interés.</p></div>
-          <div class="step"><div id="step4Badge" class="text-xs font-extrabold uppercase tracking-widest" style="color:var(--secondary-label);">Paso 4</div><div id="step4Title" class="mt-2 font-black" style="color:#C0003C;">Interpretar</div><p id="step4Copy" class="mt-2 text-sm" style="color:var(--secondary-label);">Comparar fases, condiciones o clones y revisar las limitaciones del modelo.</p></div>
-        </div>
-      </section>
-
-      <!-- ── Results table ── -->
-      <section class="card p-5 sm:p-6" id="tabla">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 id="tableTitle" class="section-title">Tabla de resultados y variables primarias</h2>
-            <p id="tableLead" class="section-copy mt-2 max-w-4xl">Además de los parámetros derivados, esta tabla incluye las variables medidas al inicio y al final de cada tramo: Xv, glucosa, lactato y producto.</p>
+            <h2 id="tableTitle" class="section-title">Tabla de intervalos en lote</h2>
+            <p id="tableLead" class="section-copy mt-2 max-w-4xl">Cada fila resume un intervalo consecutivo del dataset <code>Datos_lote.csv</code>.</p>
           </div>
           <button id="csvBtn" class="btn btn-glass" type="button">Descargar CSV</button>
         </div>
@@ -276,9 +203,7 @@
                 <th id="thDt">Δt (d)</th>
                 <th id="thMu">μ (h⁻¹)</th>
                 <th id="thIvcd">IVCDΔ</th>
-                <th id="thRglc">rGlc</th>
                 <th id="thQglc">qGlc</th>
-                <th id="thRlac">rLac</th>
                 <th id="thQlac">qLac</th>
                 <th id="thQp">qP</th>
                 <th id="thYx">Yx/Glc</th>
@@ -289,93 +214,152 @@
           </table>
         </div>
       </section>
+    </section>
 
-      <!-- ── Author footer ── -->
-      <div class="flex items-center justify-center gap-3 pt-2 pb-1">
-        <div style="height:1px;flex:1;background:var(--separator);border-radius:1px;"></div>
-        <div class="text-center" style="color:var(--secondary-label);">
-          <p class="text-xs font-semibold tracking-wide uppercase" style="letter-spacing:0.08em;" id="authorLabel1"></p>
-          <p class="text-sm font-bold mt-0.5" style="color:var(--label);" id="authorName1"></p>
-          <p class="text-xs mt-0.5" id="authorRole1"></p>
-        </div>
-        <div style="height:1px;flex:1;background:var(--separator);border-radius:1px;"></div>
-      </div>
-
-    </section><!-- end seccion-1 -->
-
-    <!-- ━━━━━━━━━━━━━━━ LOG-IVCD MODULE ━━━━━━━━━━━━━━━ -->
-    <section id="seccion-2" class="module-shell module-shell-sim space-y-6" style="display:none;">
-
-      <!-- Section band -->
+    <section id="seccion-fed" class="module-shell module-shell-sim space-y-6">
       <div class="section-band">
         <div>
-          <div id="section2Chip" class="chip chip-blue">Sección 2 · IVCD logarítmico</div>
-          <h2 id="section2Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">Cálculo analítico de IVCD bajo crecimiento exponencial</h2>
-          <p id="section2Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección reemplaza el simulador por una lectura analítica del mismo intervalo activo. Aquí el IVCD se calcula con la media logarítmica de $X_0$ y $X_1$, que corresponde a la integral exacta de $X(t)$ si el tramo sigue crecimiento exponencial.</p>
+          <div id="section2Chip" class="chip chip-blue">Sección 2 · Lote alimentado</div>
+          <h2 id="section2Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">Cálculos en lote alimentado</h2>
+          <p id="section2Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección usa <code>Datos_lote_alimentado.csv</code>. Los intervalos <code>FALSE → TRUE</code> se excluyen porque reflejan la adición de alimento. Antes del primer feed se usa concentración e IVCD; después del feed, el método correcto cambia a masas totales e ITVC.</p>
         </div>
       </div>
 
-      <!-- ── Logarithmic IVCD panel ── -->
-      <section class="card p-5 sm:p-6" id="logIvcdSection">
-        <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+      <section class="card p-5 sm:p-6">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 id="logIvcdSectionTitle" class="section-title">IVCD con media logarítmica</h2>
-            <p id="logIvcdSectionLead" class="section-copy mt-2 max-w-4xl">Se usa el mismo intervalo seleccionado en la sección de enseñanza. Si supones que entre $t_0$ y $t_1$ la biomasa viable cambia como una exponencial, el área bajo la curva puede obtenerse de forma cerrada, sin recurrir a una suma trapezoidal.</p>
+            <h2 id="fedSelectorTitle" class="section-title">Intervalo válido en lote alimentado</h2>
+            <p id="fedSelectorLead" class="section-copy mt-2 max-w-4xl">Selecciona un intervalo consecutivo válido. El sistema marca si todavía pertenece a la fase tipo lote o si ya requiere balance de masa post-feed.</p>
+          </div>
+          <div class="min-w-[280px]">
+            <label for="fedIntervalSelect" id="fedSelectorLabel" class="text-xs font-extrabold uppercase tracking-widest" style="color:var(--secondary-label);">Tramo</label>
+            <select id="fedIntervalSelect" class="w-full mt-2" style="padding:12px 14px;border-radius:14px;border:1px solid var(--separator);background:rgba(255,255,255,0.85);"></select>
           </div>
         </div>
 
-        <div class="mt-6 grid gap-5 lg:grid-cols-2">
+        <div class="mt-5 grid gap-3 grid-cols-2 lg:grid-cols-3">
+          <div class="metric-compact"><div id="fedMetricMode" class="label">Método</div><div id="fedModeOut" class="value mono" style="color:var(--sys-indigo);">—</div></div>
+          <div class="metric-compact"><div id="fedMetricMu" class="label">μ</div><div id="fedMuOut" class="value mono" style="color:#1A8A3A;">—</div></div>
+          <div class="metric-compact"><div id="fedMetricNorm" class="label">Normalizador</div><div id="fedNormOut" class="value mono" style="color:#0062CC;">—</div></div>
+          <div class="metric-compact"><div id="fedMetricQglc" class="label">qGlc</div><div id="fedQGlcOut" class="value mono" style="color:#C75300;">—</div></div>
+          <div class="metric-compact"><div id="fedMetricQlac" class="label">qLac</div><div id="fedQLacOut" class="value mono" style="color:#5AC8FA;">—</div></div>
+          <div class="metric-compact"><div id="fedMetricQp" class="label">qP</div><div id="fedQPOut" class="value mono" style="color:#C0003C;">—</div></div>
+        </div>
+
+        <div class="mt-5 grid gap-4 lg:grid-cols-2">
           <div class="card p-4">
-            <h3 id="logIvcdHowTitle" class="text-lg font-black">Forma exacta para un tramo exponencial</h3>
+            <h3 id="fedHowTitle" class="text-lg font-black">Qué cambia después del feed</h3>
             <div class="mt-4 space-y-4">
-              <div class="equation">$$X(t)=X_0\,e^{\mu (t-t_0)},\qquad \mu=\frac{\ln(X_1/X_0)}{\Delta t}$$</div>
-              <div class="equation">$$IVCD=\int_{t_0}^{t_1}X(t)\,dt=\frac{X_1-X_0}{\ln(X_1/X_0)}\,\Delta t$$</div>
-              <div class="equation">$$IVCD=L(X_0,X_1)\,\Delta t,\qquad L(X_0,X_1)=\frac{X_1-X_0}{\ln(X_1/X_0)}$$</div>
-              <div class="equation">$$\text{si }X_1=X_0,\quad IVCD=X_0\,\Delta t$$</div>
+              <div class="equation">$$TC = X_v \cdot V,\qquad ITVC=\int TC(t)\,dt$$</div>
+              <div class="equation">$$M_i = C_i\cdot \frac{V}{1000},\qquad q_i=\frac{\Delta M_i}{\Delta ITVC}$$</div>
             </div>
-            <p id="logIvcdHowCopy" class="subtle mt-4">La cantidad entre paréntesis es la media logarítmica. No es una aproximación numérica: es la integral analítica exacta entre dos puntos cuando la trayectoria interna del intervalo es exponencial.</p>
+            <p id="fedHowCopy" class="subtle mt-4">La lógica de Clonalyzer-2 es híbrida: antes del primer feed se puede trabajar con concentración e IVCD. Después del primer feed, el cálculo correcto usa masas totales e ITVC para separar efecto biológico de dilución.</p>
           </div>
 
-          <div class="space-y-5">
-            <div class="grid gap-3 sm:grid-cols-2">
-              <div class="metric-compact"><div id="logIvcdMetric1" class="label">IVCD logarítmico</div><div id="logIvcdOut" class="value mono" style="color:#0066CC;">—</div></div>
-              <div class="metric-compact"><div id="logIvcdMetric2" class="label">Media logarítmica</div><div id="logMeanOut" class="value mono" style="color:var(--sys-indigo);">—</div></div>
-              <div class="metric-compact"><div id="logIvcdMetric3" class="label">IVCD trapezoidal</div><div id="trapIvcdOut" class="value mono" style="color:#1A8A3A;">—</div></div>
-              <div class="metric-compact"><div id="logIvcdMetric4" class="label">Diferencia relativa</div><div id="ivcdDiffOut" class="value mono" style="color:#C75300;">—</div></div>
-            </div>
-
-            <div class="card p-4">
-              <h3 id="logIvcdExplainTitle" class="text-lg font-black">Sustitución del intervalo activo</h3>
-              <p id="logIvcdExplainLead" class="subtle mt-1">Los valores se actualizan automáticamente cuando cambias el inicio o el fin del tramo en la Sección 1.</p>
-              <p id="logIvcdExplain" class="mt-4 text-sm leading-7 mono" style="color:var(--label);"></p>
-              <p id="logIvcdCompare" class="subtle mt-3"></p>
-            </div>
+          <div class="card p-4">
+            <h3 id="fedExplainTitle" class="text-lg font-black">Lectura del intervalo activo</h3>
+            <p id="fedExplainLead" class="subtle mt-1">Si el dataset no incluye <code>Vol_mL</code>, μ sí puede calcularse, pero q e ITVC post-feed no pueden cerrarse de forma exacta.</p>
+            <p id="fedExplain" class="mt-4 text-sm leading-7 mono" style="color:var(--label);"></p>
+            <p id="fedExplainNote" class="subtle mt-3"></p>
           </div>
         </div>
-
-        <section class="card p-4 mt-5">
-          <h3 id="logIvcdPlotTitle" class="text-lg font-black">Exponencial exacta vs. interpolación lineal</h3>
-          <p id="logIvcdPlotLead" class="subtle mt-1">La curva azul representa la trayectoria exponencial implícita en la fórmula analítica. La curva verde muestra la interpolación lineal que subyace a la regla trapezoidal.</p>
-          <div id="logIvcdPlot" class="plot-box mt-4"></div>
-        </section>
       </section>
 
-      <!-- ── Author footer ── -->
-      <div class="flex items-center justify-center gap-3 pt-2 pb-1">
-        <div style="height:1px;flex:1;background:var(--separator);border-radius:1px;"></div>
-        <div class="text-center" style="color:var(--secondary-label);">
-          <p class="text-xs font-semibold tracking-wide uppercase" style="letter-spacing:0.08em;" id="authorLabel2"></p>
-          <p class="text-sm font-bold mt-0.5" style="color:var(--label);" id="authorName2"></p>
-          <p class="text-xs mt-0.5" id="authorRole2"></p>
-        </div>
-        <div style="height:1px;flex:1;background:var(--separator);border-radius:1px;"></div>
+      <div class="grid gap-6 lg:grid-cols-2">
+        <section class="card p-4">
+          <div>
+            <h3 id="fedPlot1Title" class="text-lg font-black">Crecimiento y eventos de feed</h3>
+            <p id="fedPlot1Lead" class="subtle mt-1">Los puntos post-feed se marcan para que se vea qué tramos deben excluirse y cuáles deben cambiar a balance de masa.</p>
+          </div>
+          <div id="fedGrowthPlot" class="plot-box mt-4"></div>
+        </section>
+
+        <section class="card p-4">
+          <div>
+            <h3 id="fedPlot2Title" class="text-lg font-black">Metabolitos y producto en lote alimentado</h3>
+            <p id="fedPlot2Lead" class="subtle mt-1">Las líneas verticales indican puntos de post-feed. Ahí no se interpreta la caída o subida de concentración como actividad celular pura.</p>
+          </div>
+          <div id="fedMetPlot" class="plot-box mt-4"></div>
+        </section>
       </div>
 
-    </section><!-- end seccion-2 -->
+      <section class="card p-5 sm:p-6">
+        <div>
+          <h2 id="fedTableTitle" class="section-title">Auditoría de intervalos en lote alimentado</h2>
+          <p id="fedTableLead" class="section-copy mt-2 max-w-4xl">La tabla muestra qué intervalos se usan, cuáles se excluyen por feed y cuáles requerirían <code>Vol_mL</code> para cerrar el balance de masa.</p>
+        </div>
+        <div class="table-wrap mt-5">
+          <table>
+            <thead>
+              <tr>
+                <th id="fedThInterval">Intervalo</th>
+                <th id="fedThStatus">Estado</th>
+                <th id="fedThMethod">Método</th>
+                <th id="fedThMu">μ (h⁻¹)</th>
+                <th id="fedThNote">Nota</th>
+              </tr>
+            </thead>
+            <tbody id="fedTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
 
+    <section id="seccion-compare" class="module-shell module-shell-sim space-y-6">
+      <div class="section-band">
+        <div>
+          <div id="section3Chip" class="chip chip-blue">Sección 3 · Comparación de IVCD</div>
+          <h2 id="section3Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">IVCD trapezoidal vs IVCD logarítmico</h2>
+          <p id="section3Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección compara dos formas de integrar la biomasa viable entre dos puntos: la regla trapezoidal y la integral analítica exacta bajo crecimiento exponencial.</p>
+        </div>
+      </div>
+
+      <section class="card p-5 sm:p-6">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 id="compareTitle" class="section-title">Fuente del intervalo</h2>
+            <p id="compareLead" class="section-copy mt-2 max-w-4xl">Puedes comparar usando el intervalo activo de lote o el intervalo válido seleccionado en lote alimentado.</p>
+          </div>
+          <div class="flex gap-2">
+            <button id="compareBatchBtn" class="btn btn-glass btn-scale-active" type="button">Usar lote</button>
+            <button id="compareFedBtn" class="btn btn-glass" type="button">Usar lote alimentado</button>
+          </div>
+        </div>
+
+        <div class="mt-5 grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <div class="metric-compact"><div id="compareMetric1" class="label">IVCD trapezoidal</div><div id="trapIvcdOut" class="value mono" style="color:#1A8A3A;">—</div></div>
+          <div class="metric-compact"><div id="compareMetric2" class="label">IVCD logarítmico</div><div id="logIvcdOut" class="value mono" style="color:#0066CC;">—</div></div>
+          <div class="metric-compact"><div id="compareMetric3" class="label">Media logarítmica</div><div id="logMeanOut" class="value mono" style="color:var(--sys-indigo);">—</div></div>
+          <div class="metric-compact"><div id="compareMetric4" class="label">Diferencia relativa</div><div id="ivcdDiffOut" class="value mono" style="color:#C75300;">—</div></div>
+        </div>
+
+        <div class="mt-5 grid gap-4 lg:grid-cols-2">
+          <div class="card p-4">
+            <h3 id="logIvcdHowTitle" class="text-lg font-black">Forma exacta bajo crecimiento exponencial</h3>
+            <div class="mt-4 space-y-4">
+              <div class="equation">$$X(t)=X_0 e^{\mu(t-t_0)}$$</div>
+              <div class="equation">$$IVCD=\int_{t_0}^{t_1} X(t)\,dt=\frac{X_1-X_0}{\ln(X_1/X_0)}\Delta t$$</div>
+            </div>
+            <p id="logIvcdHowCopy" class="subtle mt-4">La expresión analítica equivale a la media logarítmica de <code>X0</code> y <code>X1</code> multiplicada por el tiempo del intervalo.</p>
+          </div>
+
+          <div class="card p-4">
+            <h3 id="logIvcdExplainTitle" class="text-lg font-black">Sustitución del intervalo activo</h3>
+            <p id="logIvcdExplainLead" class="subtle mt-1">El texto cambia según la fuente elegida y usa el intervalo activo de cada sección.</p>
+            <p id="logIvcdExplain" class="mt-4 text-sm leading-7 mono" style="color:var(--label);"></p>
+            <p id="logIvcdCompare" class="subtle mt-3"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card p-4">
+        <h3 id="logIvcdPlotTitle" class="text-lg font-black">Curva exponencial exacta vs interpolación lineal</h3>
+        <p id="logIvcdPlotLead" class="subtle mt-1">La curva azul usa la hipótesis exponencial; la verde muestra la línea recta que usa la regla trapezoidal.</p>
+        <div id="comparePlot" class="plot-box mt-4"></div>
+      </section>
+    </section>
   </main>
 
-  <!-- ══ FOOTER ══ -->
   <footer class="hc-footer">
     <div class="hc-footer-inner">
       <div class="hc-footer-suite">
