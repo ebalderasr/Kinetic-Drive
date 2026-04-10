@@ -81,6 +81,7 @@ function convertRow(map) {
   const glc_gL = parseLocaleNumber(map.G);
   const lac_gL = parseLocaleNumber(map.L);
   const product_mgL = parseLocaleNumber(map.P);
+  const vol_mL = parseLocaleNumber(map.Vol_mL);
   const isPostFeed = /^true$/i.test(String(map.is_post_feed ?? '').trim());
   if (!Number.isFinite(day) || !Number.isFinite(xv)) return null;
   return {
@@ -90,9 +91,11 @@ function convertRow(map) {
     glc_gL,
     lac_gL,
     product_mgL,
+    vol_mL,
     isPostFeed,
     glc_mM: Number.isFinite(glc_gL) ? (glc_gL * 1000) / MW_GLC : null,
-    lac_mM: Number.isFinite(lac_gL) ? (lac_gL * 1000) / MW_LAC : null
+    lac_mM: Number.isFinite(lac_gL) ? (lac_gL * 1000) / MW_LAC : null,
+    totalCells_1e6: Number.isFinite(vol_mL) ? xv * vol_mL : null
   };
 }
 
@@ -132,6 +135,14 @@ function diffIfBoth(a, b, fn) {
   return Number.isFinite(a) && Number.isFinite(b) ? fn(a, b) : null;
 }
 
+function totalMmol(conc_mM, vol_mL) {
+  return Number.isFinite(conc_mM) && Number.isFinite(vol_mL) ? conc_mM * (vol_mL / 1000) : null;
+}
+
+function totalMg(conc_mgL, vol_mL) {
+  return Number.isFinite(conc_mgL) && Number.isFinite(vol_mL) ? conc_mgL * (vol_mL / 1000) : null;
+}
+
 function fedNoteFor(status, method) {
   if (status === 'skip') {
     return currentLang === 'es'
@@ -140,8 +151,8 @@ function fedNoteFor(status, method) {
   }
   if (method === 'fed_mass') {
     return currentLang === 'es'
-      ? 'Post-feed: el método correcto requiere Vol_mL para usar masas totales e ITVC.'
-      : 'Post-feed: the correct method requires Vol_mL to use total masses and ITVC.';
+      ? 'Post-feed: usar masas totales e ITVC con el volumen medido.'
+      : 'Post-feed: use total masses and ITVC with the measured volume.';
   }
   return currentLang === 'es'
     ? 'Antes del primer feed: usar concentración + IVCD.'
@@ -253,16 +264,41 @@ function activeFedIntervalData() {
   const dtD = b.day - a.day;
   const dtH = dtD * 24;
   const ivcd = ((a.xv + b.xv) / 2) * dtD;
+  const tc1 = a.totalCells_1e6;
+  const tc2 = b.totalCells_1e6;
+  const itvc = Number.isFinite(tc1) && Number.isFinite(tc2) ? ((tc1 + tc2) / 2) * dtD : null;
+  const glcMass1 = totalMmol(a.glc_mM, a.vol_mL);
+  const glcMass2 = totalMmol(b.glc_mM, b.vol_mL);
+  const lacMass1 = totalMmol(a.lac_mM, a.vol_mL);
+  const lacMass2 = totalMmol(b.lac_mM, b.vol_mL);
+  const pMass1 = totalMg(a.product_mgL, a.vol_mL);
+  const pMass2 = totalMg(b.product_mgL, b.vol_mL);
+  const logMean = calcLogMean(a.xv, b.xv);
   return {
     ...desc,
     dtD,
     dtH,
     ivcd,
-    logMean: calcLogMean(a.xv, b.xv),
-    ivcdLog: calcLogMean(a.xv, b.xv) !== null ? calcLogMean(a.xv, b.xv) * dtD : null,
-    qGlc: desc.method === 'batch' ? diffIfBoth(a.glc_mM, b.glc_mM, (v1, v2) => (v1 - v2) / ivcd) : null,
-    qLac: desc.method === 'batch' ? diffIfBoth(a.lac_mM, b.lac_mM, (v1, v2) => (v2 - v1) / ivcd) : null,
-    qP: desc.method === 'batch' ? diffIfBoth(a.product_mgL, b.product_mgL, (v1, v2) => (v2 - v1) / ivcd) : null
+    tc1,
+    tc2,
+    itvc,
+    glcMass1,
+    glcMass2,
+    lacMass1,
+    lacMass2,
+    pMass1,
+    pMass2,
+    logMean,
+    ivcdLog: logMean !== null ? logMean * dtD : null,
+    qGlc: desc.method === 'batch'
+      ? diffIfBoth(a.glc_mM, b.glc_mM, (v1, v2) => (v1 - v2) / ivcd)
+      : diffIfBoth(glcMass1, glcMass2, (m1, m2) => itvc ? ((m1 - m2) / itvc) * 1000 : null),
+    qLac: desc.method === 'batch'
+      ? diffIfBoth(a.lac_mM, b.lac_mM, (v1, v2) => (v2 - v1) / ivcd)
+      : diffIfBoth(lacMass1, lacMass2, (m1, m2) => itvc ? ((m2 - m1) / itvc) * 1000 : null),
+    qP: desc.method === 'batch'
+      ? diffIfBoth(a.product_mgL, b.product_mgL, (v1, v2) => (v2 - v1) / ivcd)
+      : diffIfBoth(pMass1, pMass2, (m1, m2) => itvc ? ((m2 - m1) / itvc) * 1000 : null)
   };
 }
 
@@ -431,19 +467,19 @@ function renderFedSection() {
     : (currentLang === 'es' ? 'Masas totales + ITVC' : 'Total masses + ITVC');
   const normLabel = isBatchLike
     ? `${currentLang === 'es' ? 'IVCD' : 'IVCD'} = ${fmt(r.ivcd, 3)}`
-    : (currentLang === 'es' ? 'ITVC requiere Vol_mL' : 'ITVC requires Vol_mL');
+    : `${currentLang === 'es' ? 'ITVC' : 'ITVC'} = ${fmt(r.itvc, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d' : 'cells·day'}`;
   el('fedModeOut').textContent = methodLabel;
   el('fedMuOut').innerHTML = `${fmt(r.mu, 4)} h⁻¹<br><span style="font-size:0.82em;opacity:0.6;">${fmt(r.mu * 24, 3)} d⁻¹</span>`;
   el('fedNormOut').textContent = normLabel;
-  el('fedQGlcOut').textContent = isBatchLike ? `${fmt(r.qGlc, 3)} pmol/cel/d` : t('noData');
-  el('fedQLacOut').textContent = isBatchLike ? `${fmt(r.qLac, 3)} pmol/cel/d` : t('noData');
-  el('fedQPOut').textContent = isBatchLike ? `${fmt(r.qP, 3)} pg/cel/d` : t('noData');
+  el('fedQGlcOut').textContent = `${fmt(r.qGlc, 3)} pmol/cel/d`;
+  el('fedQLacOut').textContent = `${fmt(r.qLac, 3)} pmol/cel/d`;
+  el('fedQPOut').textContent = `${fmt(r.qP, 3)} pg/cel/d`;
 
   const a = r.start;
   const b = r.end;
   el('fedExplain').innerHTML = isBatchLike
     ? `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>IVCD = ((${fmt(a.xv, 3)} + ${fmt(b.xv, 3)}) / 2) × ${fmt(r.dtD, 2)} d = <strong>${fmt(r.ivcd, 3)}</strong><br>qGlc = (${fmt(a.glc_mM, 3)} − ${fmt(b.glc_mM, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qGlc, 3)}</strong>`
-    : `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>M_i = C_i·V/1000,  TC = X_v·V,  q_i = ΔM_i/ΔITVC<br><strong>${currentLang === 'es' ? 'Con este dataset no se puede cerrar el balance post-feed porque falta Vol_mL.' : 'This dataset cannot close the post-feed balance because Vol_mL is missing.'}</strong>`;
+    : `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>TC = Xv·V: (${fmt(a.xv, 3)}×${fmt(a.vol_mL, 2)}) y (${fmt(b.xv, 3)}×${fmt(b.vol_mL, 2)}) = <strong>${fmt(r.tc1, 3)}</strong>, <strong>${fmt(r.tc2, 3)}</strong><br>ITVC = ((${fmt(r.tc1, 3)} + ${fmt(r.tc2, 3)}) / 2) × ${fmt(r.dtD, 2)} = <strong>${fmt(r.itvc, 3)}</strong><br>qGlc = (M1 − M2) / ITVC = <strong>${fmt(r.qGlc, 3)}</strong>`;
   el('fedExplainNote').textContent = r.note;
 }
 
@@ -524,7 +560,7 @@ function currentCompareInterval() {
     ...r,
     sourceNote: r.method === 'batch'
       ? (currentLang === 'es' ? 'Usando un intervalo pre-feed de lote alimentado, todavía interpretable con IVCD.' : 'Using a pre-feed fed-batch interval, still interpretable with IVCD.')
-      : (currentLang === 'es' ? 'Usando un intervalo post-feed: la comparación mostrada es solo sobre Xv; el método exacto post-feed requeriría ITVC.' : 'Using a post-feed interval: the shown comparison is only on Xv; exact post-feed normalization would require ITVC.')
+      : (currentLang === 'es' ? 'Usando un intervalo post-feed: el balance metabólico ya se puede cerrar con masas e ITVC, pero aquí la comparación sigue enfocada en la integración de Xv.' : 'Using a post-feed interval: the metabolic balance can now be closed with masses and ITVC, but this comparison still focuses on integrating Xv.')
   };
 }
 

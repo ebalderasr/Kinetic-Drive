@@ -258,7 +258,7 @@
 
           <div class="card p-4">
             <h3 id="fedExplainTitle" class="text-lg font-black">Lectura del intervalo activo</h3>
-            <p id="fedExplainLead" class="subtle mt-1">Si el dataset no incluye <code>Vol_mL</code>, μ sí puede calcularse, pero q e ITVC post-feed no pueden cerrarse de forma exacta.</p>
+            <p id="fedExplainLead" class="subtle mt-1">Como el dataset ahora incluye <code>Vol_mL</code>, los intervalos post-feed pueden resolverse con masas totales e ITVC.</p>
             <p id="fedExplain" class="mt-4 text-sm leading-7 mono" style="color:var(--label);"></p>
             <p id="fedExplainNote" class="subtle mt-3"></p>
           </div>
@@ -286,7 +286,7 @@
       <section class="card p-5 sm:p-6">
         <div>
           <h2 id="fedTableTitle" class="section-title">Auditoría de intervalos en lote alimentado</h2>
-          <p id="fedTableLead" class="section-copy mt-2 max-w-4xl">La tabla muestra qué intervalos se usan, cuáles se excluyen por feed y cuáles requerirían <code>Vol_mL</code> para cerrar el balance de masa.</p>
+          <p id="fedTableLead" class="section-copy mt-2 max-w-4xl">La tabla muestra qué intervalos se usan, cuáles se excluyen por feed y cuáles cambian a balance de masa después de la alimentación.</p>
         </div>
         <div class="table-wrap mt-5">
           <table>
