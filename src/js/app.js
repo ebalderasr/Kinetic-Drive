@@ -431,7 +431,7 @@ function populateFedControls() {
       ? (currentLang === 'es' ? 'pre-feed' : 'pre-feed')
       : (currentLang === 'es' ? 'post-feed' : 'post-feed');
     const sty = isActive
-      ? 'background:#0062CC;color:white;border:1px solid #0062CC;box-shadow:0 3px 10px rgba(0,98,204,0.35);'
+      ? 'background:#5856D6;color:white;border:1px solid #5856D6;box-shadow:0 3px 10px rgba(88,86,214,0.35);'
       : 'background:rgba(255,255,255,0.85);color:rgba(0,0,0,0.7);border:1px solid rgba(0,0,0,0.1);';
     return `<button onclick="window.setFedInterval(${idx})" style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${interval.label} <span style="font-size:11px;opacity:0.7;">(${methodTag})</span></button>`;
   }).join('');
@@ -491,19 +491,31 @@ function renderFedSection() {
   el('fedExplainNote').textContent = r.note;
 }
 
-function drawFedPlots() {
-  const data = datasets.fed;
-  const feedDays = data.filter((row) => row.isPostFeed).map((row) => row.day);
-  const feedShapes = feedDays.map((day) => ({
-    type: 'line',
-    x0: day,
-    x1: day,
-    y0: 0,
-    y1: 1,
-    xref: 'x',
-    yref: 'paper',
+function fedPlotShapes() {
+  const feedDays = datasets.fed.filter((row) => row.isPostFeed).map((row) => row.day);
+  const shapes = feedDays.map((day) => ({
+    type: 'line', x0: day, x1: day, y0: 0, y1: 1,
+    xref: 'x', yref: 'paper',
     line: { color: '#FF9500', width: 1.5, dash: 'dot' }
   }));
+  const desc = activeFedDescriptor();
+  if (desc) {
+    shapes.push({
+      type: 'rect',
+      x0: desc.start.day, x1: desc.end.day,
+      y0: 0, y1: 1,
+      xref: 'x', yref: 'paper',
+      fillcolor: 'rgba(88,86,214,0.10)',
+      line: { color: '#5856D6', width: 1.5, dash: 'dash' },
+      layer: 'below'
+    });
+  }
+  return shapes;
+}
+
+function drawFedPlots() {
+  const data = datasets.fed;
+  const feedShapes = fedPlotShapes();
 
   Plotly.newPlot('fedGrowthPlot', [
     { x: data.filter((row) => !row.isPostFeed).map((row) => row.day), y: data.filter((row) => !row.isPostFeed).map((row) => row.xv), type: 'scatter', mode: 'lines+markers', name: currentLang === 'es' ? 'Muestreo regular' : 'Regular sample', line: { color: '#34C759', width: 3 }, marker: { size: 8, color: '#1A8A3A' } },
@@ -771,6 +783,9 @@ async function init() {
     fedActiveInterval = idx;
     populateFedControls();
     renderFedSection();
+    const shapes = fedPlotShapes();
+    Plotly.relayout('fedGrowthPlot', { shapes });
+    Plotly.relayout('fedMetPlot', { shapes });
     renderCompareSection();
   };
   el('compareBatchBtn').addEventListener('click', () => {
