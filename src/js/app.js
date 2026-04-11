@@ -491,13 +491,13 @@ function renderFedSection() {
   el('fedQLacOut').textContent = `${fmt(r.qLac, 3)} pmol/cel/d`;
   el('fedQPOut').textContent = `${fmt(r.qP, 3)} pg/cel/d`;
 
-  // ITVC row: show only when post-feed and itvc available
-  const itvcRow = el('fedItvcRow');
+  // ITVC sub-display inside IVCD card
+  const itvcSub = el('fedItvcSub');
   if (!isBatchLike && r.itvc !== null) {
-    itvcRow.style.display = '';
+    itvcSub.style.display = '';
     el('fedItvcOut').textContent = `${fmt(r.itvc, 3)} ${itvcUnits}`;
   } else {
-    itvcRow.style.display = 'none';
+    itvcSub.style.display = 'none';
   }
 
   const a = r.start;
@@ -529,10 +529,34 @@ function renderFedSection() {
       `ΔMP   = (${fmt(r.pM2, 3)} − ${fmt(r.pM1, 3)}) mg → qP = <strong>${fmt(r.qP, 3)}</strong>`;
   }
 
-  // Combined reading (card 4)
-  el('fedExplain').innerHTML = isBatchLike
-    ? `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>IVCD = ((${fmt(a.xv, 3)} + ${fmt(b.xv, 3)}) / 2) × ${fmt(r.dtD, 2)} d = <strong>${fmt(r.ivcd, 3)}</strong><br>qGlc = (${fmt(a.glc_mM, 3)} − ${fmt(b.glc_mM, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qGlc, 3)}</strong>`
-    : `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>TC = Xv·V: (${fmt(a.xv, 3)}×${fmt(a.vol_mL, 2)}) y (${fmt(b.xv, 3)}×${fmt(b.vol_mL, 2)}) = <strong>${fmt(r.tc1, 3)}</strong>, <strong>${fmt(r.tc2, 3)}</strong><br>ITVC = ((${fmt(r.tc1, 3)} + ${fmt(r.tc2, 3)}) / 2) × ${fmt(r.dtD, 2)} = <strong>${fmt(r.itvc, 3)}</strong><br>qGlc = (M1 − M2) / ITVC = <strong>${fmt(r.qGlc, 3)}</strong>`;
+  // Combined reading (card 4) — LaTeX equations
+  const explainEl = el('fedExplain');
+  if (window.MathJax) MathJax.typesetClear([explainEl]);
+  const uCell = currentLang === 'es' ? '\\text{cél}' : '\\text{cells}';
+  const uCellD = currentLang === 'es' ? '\\text{cél·d/mL}' : '\\text{cells·day/mL}';
+  const uTotalD = currentLang === 'es' ? '\\times\\!10^6\\,\\text{cél·d}' : '\\times\\!10^6\\,\\text{cells·day}';
+  let eqs;
+  if (isBatchLike) {
+    eqs = [
+      `$$\\mu = \\frac{\\ln\\!\\left(\\dfrac{${fmt(b.xv, 3)}}{${fmt(a.xv, 3)}}\\right)}{${fmt(r.dtH, 2)}\\,\\text{h}} = \\mathbf{${fmt(r.mu, 4)}\\,\\text{h}^{-1}}$$`,
+      `$$IVCD = ${fmt(r.ivcd, 3)}\\;\\times\\!10^6\\,${uCellD}$$`,
+      `$$q_{Glc} = \\frac{${fmt(a.glc_mM, 3)} - ${fmt(b.glc_mM, 3)}}{${fmt(r.ivcd, 3)}} = \\mathbf{${fmt(r.qGlc, 3)}}$$`,
+      `$$q_{Lac} = \\frac{${fmt(b.lac_mM, 3)} - ${fmt(a.lac_mM, 3)}}{${fmt(r.ivcd, 3)}} = \\mathbf{${fmt(r.qLac, 3)}}$$`,
+      `$$q_P = \\frac{${fmt(b.product_mgL, 3)} - ${fmt(a.product_mgL, 3)}}{${fmt(r.ivcd, 3)}} = \\mathbf{${fmt(r.qP, 3)}}$$`
+    ];
+  } else {
+    eqs = [
+      `$$\\mu = \\frac{\\ln\\!\\left(\\dfrac{${fmt(b.xv, 3)}}{${fmt(a.xv, 3)}}\\right)}{${fmt(r.dtH, 2)}\\,\\text{h}} = \\mathbf{${fmt(r.mu, 4)}\\,\\text{h}^{-1}}$$`,
+      `$$TC_1 = ${fmt(a.xv, 3)} \\times ${fmt(a.vol_mL, 2)}\\,\\text{mL} = ${fmt(r.tc1, 3)}\\;\\times\\!10^6\\,${uCell}$$`,
+      `$$TC_2 = ${fmt(b.xv, 3)} \\times ${fmt(b.vol_mL, 2)}\\,\\text{mL} = ${fmt(r.tc2, 3)}\\;\\times\\!10^6\\,${uCell}$$`,
+      `$$ITVC = \\frac{${fmt(r.tc1, 3)} + ${fmt(r.tc2, 3)}}{2} \\times ${fmt(r.dtD, 2)}\\,\\text{d} = ${fmt(r.itvc, 3)}\\;${uTotalD}$$`,
+      `$$q_{Glc} = \\frac{${fmt(r.glcM1, 3)} - ${fmt(r.glcM2, 3)}}{${fmt(r.itvc, 3)}} \\times 1000 = \\mathbf{${fmt(r.qGlc, 3)}}$$`,
+      `$$q_{Lac} = \\frac{${fmt(r.lacM2, 3)} - ${fmt(r.lacM1, 3)}}{${fmt(r.itvc, 3)}} \\times 1000 = \\mathbf{${fmt(r.qLac, 3)}}$$`,
+      `$$q_P = \\frac{${fmt(r.pM2, 3)} - ${fmt(r.pM1, 3)}}{${fmt(r.itvc, 3)}} \\times 1000 = \\mathbf{${fmt(r.qP, 3)}}$$`
+    ];
+  }
+  explainEl.innerHTML = eqs.map((eq) => `<div class="equation">${eq}</div>`).join('');
+  if (window.MathJax && window.MathJax.typesetPromise) MathJax.typesetPromise([explainEl]);
 
   // Note
   if (r.hasSkip) {
