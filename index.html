@@ -341,53 +341,43 @@
         <div>
           <div id="section3Chip" class="chip chip-blue">Sección 3 · Comparación de IVCD</div>
           <h2 id="section3Title" class="mt-3 text-xl font-black tracking-tight sm:text-2xl">IVCD trapezoidal vs IVCD logarítmico</h2>
-          <p id="section3Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">Esta sección compara dos formas de integrar la biomasa viable entre dos puntos: la regla trapezoidal y la integral analítica exacta bajo crecimiento exponencial.</p>
+          <p id="section3Lead" class="mt-1 text-sm leading-relaxed max-w-3xl" style="color:var(--secondary-label);">El área bajo la curva de crecimiento se puede estimar con la regla trapezoidal o con la integral analítica exacta bajo crecimiento exponencial. Esta sección muestra cuánto difieren ambos métodos sobre los datos reales de lote y explica de dónde viene la forma logarítmica.</p>
         </div>
       </div>
 
-      <section class="card p-5 sm:p-6">
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 id="compareTitle" class="section-title">Fuente del intervalo</h2>
-            <p id="compareLead" class="section-copy mt-2 max-w-4xl">Puedes comparar usando el intervalo activo de lote o el intervalo válido seleccionado en lote alimentado.</p>
-          </div>
-          <div class="flex gap-2">
-            <button id="compareBatchBtn" class="btn btn-glass btn-scale-active" type="button">Usar lote</button>
-            <button id="compareFedBtn" class="btn btn-glass" type="button">Usar lote alimentado</button>
-          </div>
-        </div>
+      <section class="card p-4">
+        <h3 id="logIvcdPlotTitle" class="text-lg font-black">IVCD acumulada sobre los datos de lote</h3>
+        <p id="logIvcdPlotLead" class="subtle mt-1">La línea punteada verde usa la regla trapezoidal; la sólida azul usa la media logarítmica exacta. El área sombreada es el intervalo activo seleccionado en Sección 1.</p>
+        <div id="comparePlot" class="plot-box mt-4"></div>
+      </section>
 
-        <div class="mt-5 grid gap-3 grid-cols-2 lg:grid-cols-4">
+      <section class="card p-4 sm:p-5">
+        <h3 id="compareTitle" class="text-lg font-black">Valores del intervalo activo (Sección 1 · Lote)</h3>
+        <div class="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-4">
           <div class="metric-compact"><div id="compareMetric1" class="label">IVCD trapezoidal</div><div id="trapIvcdOut" class="value mono" style="color:#1A8A3A;">—</div></div>
           <div class="metric-compact"><div id="compareMetric2" class="label">IVCD logarítmico</div><div id="logIvcdOut" class="value mono" style="color:#0066CC;">—</div></div>
           <div class="metric-compact"><div id="compareMetric3" class="label">Media logarítmica</div><div id="logMeanOut" class="value mono" style="color:var(--sys-indigo);">—</div></div>
           <div class="metric-compact"><div id="compareMetric4" class="label">Diferencia relativa</div><div id="ivcdDiffOut" class="value mono" style="color:#C75300;">—</div></div>
         </div>
+        <p id="logIvcdCompare" class="subtle mt-3"></p>
+      </section>
 
-        <div class="mt-5 grid gap-4 lg:grid-cols-2">
-          <div class="card p-4">
-            <h3 id="logIvcdHowTitle" class="text-lg font-black">Forma exacta bajo crecimiento exponencial</h3>
-            <div class="mt-4 space-y-4">
-              <div class="equation">$$X(t)=X_0 e^{\mu(t-t_0)}$$</div>
-              <div class="equation">$$IVCD=\int_{t_0}^{t_1} X(t)\,dt=\frac{X_1-X_0}{\ln(X_1/X_0)}\Delta t$$</div>
-            </div>
-            <p id="logIvcdHowCopy" class="subtle mt-4">La expresión analítica equivale a la media logarítmica de <code>X0</code> y <code>X1</code> multiplicada por el tiempo del intervalo.</p>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <div class="card p-4">
+          <h3 id="logIvcdHowTitle" class="text-lg font-black">Forma exacta bajo crecimiento exponencial</h3>
+          <div class="mt-4 space-y-4">
+            <div class="equation">$$X(t)=X_0\,e^{\mu(t-t_0)}$$</div>
+            <div class="equation">$$IVCD=\int_{t_0}^{t_1}\!X(t)\,dt=\frac{X_1-X_0}{\ln(X_1/X_0)}\,\Delta t$$</div>
           </div>
-
-          <div class="card p-4">
-            <h3 id="logIvcdExplainTitle" class="text-lg font-black">Sustitución del intervalo activo</h3>
-            <p id="logIvcdExplainLead" class="subtle mt-1">El texto cambia según la fuente elegida y usa el intervalo activo de cada sección.</p>
-            <div id="logIvcdExplain" class="mt-4 space-y-2"></div>
-            <p id="logIvcdCompare" class="subtle mt-3"></p>
-          </div>
+          <p id="logIvcdHowCopy" class="subtle mt-4">La expresión analítica equivale a la media logarítmica de <code>X₀</code> y <code>X₁</code> multiplicada por la duración del intervalo.</p>
         </div>
-      </section>
 
-      <section class="card p-4">
-        <h3 id="logIvcdPlotTitle" class="text-lg font-black">Curva exponencial exacta vs interpolación lineal</h3>
-        <p id="logIvcdPlotLead" class="subtle mt-1">La curva azul usa la hipótesis exponencial; la verde muestra la línea recta que usa la regla trapezoidal.</p>
-        <div id="comparePlot" class="plot-box mt-4"></div>
-      </section>
+        <div class="card p-4">
+          <h3 id="logIvcdExplainTitle" class="text-lg font-black">Sustitución numérica — intervalo activo</h3>
+          <p id="logIvcdExplainLead" class="subtle mt-1">Ambos métodos aplicados a los valores del intervalo seleccionado en Sección 1.</p>
+          <div id="logIvcdExplain" class="mt-4 space-y-3"></div>
+        </div>
+      </div>
     </section>
   </main>
 

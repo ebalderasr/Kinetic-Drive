@@ -9,7 +9,6 @@ let batchStart = 0;
 let batchEnd = 1;
 let fedStart = 0;
 let fedEnd = 1;
-let compareSource = 'batch';
 
 const datasets = {
   batch: [],
@@ -649,67 +648,73 @@ function fillFedAuditTable() {
   }).join('');
 }
 
-function currentCompareInterval() {
-  if (compareSource === 'batch') {
-    const r = activeBatchInterval();
-    return { ...r, sourceNote: currentLang === 'es' ? 'Usando el intervalo activo de lote.' : 'Using the active batch interval.' };
-  }
-  const r = activeFedIntervalData();
-  return {
-    ...r,
-    sourceNote: r.method === 'batch'
-      ? (currentLang === 'es' ? 'Usando un intervalo pre-feed de lote alimentado, todavía interpretable con IVCD.' : 'Using a pre-feed fed-batch interval, still interpretable with IVCD.')
-      : (currentLang === 'es' ? 'Usando un intervalo post-feed: el balance metabólico ya se puede cerrar con masas e ITVC, pero aquí la comparación sigue enfocada en la integración de Xv.' : 'Using a post-feed interval: the metabolic balance can now be closed with masses and ITVC, but this comparison still focuses on integrating Xv.')
-  };
-}
-
 function renderCompareSection() {
-  const r = currentCompareInterval();
+  const data = datasets.batch;
+  const r = activeBatchInterval();
   const diffPct = r.ivcdLog ? ((r.ivcd - r.ivcdLog) / r.ivcdLog) * 100 : null;
-  el('trapIvcdOut').textContent = `${fmt(r.ivcd, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}`;
-  el('logIvcdOut').textContent = `${fmt(r.ivcdLog, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}`;
-  el('logMeanOut').textContent = `${fmt(r.logMean, 3)} ×10⁶ ${currentLang === 'es' ? 'cél/mL' : 'cells/mL'}`;
-  el('ivcdDiffOut').textContent = diffPct === null ? t('noData') : `${fmt(diffPct, 2)} %`;
-  const explainEl = el('logIvcdExplain');
-  const uCell  = currentLang === 'es' ? '\\text{cél/mL}'     : '\\text{cells/mL}';
-  const uCellD = currentLang === 'es' ? '\\text{cél·d/mL}'   : '\\text{cells·d/mL}';
-  if (window.MathJax) MathJax.typesetClear([explainEl]);
-  explainEl.innerHTML =
-    `<div class="equation">$$L(X_0,\\,X_1)=\\frac{${fmt(r.x2,3)}-${fmt(r.x1,3)}}{\\ln\\!\\left(\\dfrac{${fmt(r.x2,3)}}{${fmt(r.x1,3)}}\\right)}=${fmt(r.logMean,3)}\\;\\times10^6\\;${uCell}$$</div>` +
-    `<div class="equation">$$IVCD_{\\log}=${fmt(r.logMean,3)}\\times${fmt(r.dtD,2)}\\;\\text{d}=\\mathbf{${fmt(r.ivcdLog,3)}}\\;\\times10^6\\;${uCellD}$$</div>` +
-    `<div class="equation">$$IVCD_{\\text{trap}}=\\mathbf{${fmt(r.ivcd,3)}}\\;\\times10^6\\;${uCellD}$$</div>`;
-  if (window.MathJax && window.MathJax.typesetPromise) MathJax.typesetPromise([explainEl]);
-  el('logIvcdCompare').textContent = `${r.sourceNote} ${currentLang === 'es' ? 'La diferencia relativa entre ambos métodos es' : 'The relative difference between both methods is'} ${fmt(Math.abs(diffPct), 2)} %.`;
+  const ivcdU = currentLang === 'es' ? '×10⁶ cél·d/mL' : '×10⁶ cells·day/mL';
+  const cellU = currentLang === 'es' ? '×10⁶ cél/mL'   : '×10⁶ cells/mL';
 
-  const samples = 60;
-  const xs = [];
-  const expYs = [];
-  const linYs = [];
-  const lnRatio = Math.log(r.x2 / r.x1);
-  for (let i = 0; i <= samples; i++) {
-    const f = i / samples;
-    const day = r.t1 + (r.dtD * f);
-    xs.push(day);
-    expYs.push(r.x1 * Math.exp(lnRatio * f));
-    linYs.push(r.x1 + ((r.x2 - r.x1) * f));
+  // Metrics
+  el('trapIvcdOut').textContent = `${fmt(r.ivcd, 3)} ${ivcdU}`;
+  el('logIvcdOut').textContent  = `${fmt(r.ivcdLog, 3)} ${ivcdU}`;
+  el('logMeanOut').textContent  = `${fmt(r.logMean, 3)} ${cellU}`;
+  el('ivcdDiffOut').textContent = diffPct === null ? t('noData') : `${fmt(diffPct, 2)} %`;
+  el('logIvcdCompare').textContent = currentLang === 'es'
+    ? `La diferencia relativa entre los dos métodos en el intervalo activo es ${fmt(Math.abs(diffPct), 2)} %.`
+    : `The relative difference between both methods in the active interval is ${fmt(Math.abs(diffPct), 2)} %.`;
+
+  // Accumulated IVCD (trapezoidal and logarithmic) over the full batch dataset
+  const accTrap = [0];
+  const accLog  = [0];
+  for (let i = 0; i < data.length - 1; i++) {
+    const dt = data[i + 1].day - data[i].day;
+    accTrap.push(accTrap[i] + ((data[i].xv + data[i + 1].xv) / 2) * dt);
+    const lm = calcLogMean(data[i].xv, data[i + 1].xv);
+    accLog.push(accLog[i] + (lm !== null ? lm * dt : ((data[i].xv + data[i + 1].xv) / 2) * dt));
   }
 
+  const yAxisTitle = currentLang === 'es' ? 'IVCD acumulada (×10⁶ cél·d/mL)' : 'Accumulated IVCD (×10⁶ cells·day/mL)';
   Plotly.newPlot('comparePlot', [
-    { x: xs, y: expYs, type: 'scatter', mode: 'lines', name: currentLang === 'es' ? 'Exponencial exacta' : 'Exact exponential', line: { color: '#0062CC', width: 3 }, fill: 'tozeroy', fillcolor: 'rgba(0,98,204,0.12)' },
-    { x: xs, y: linYs, type: 'scatter', mode: 'lines', name: currentLang === 'es' ? 'Interpolación lineal' : 'Linear interpolation', line: { color: '#1A8A3A', width: 3, dash: 'dash' } },
-    { x: [r.t1, r.t2], y: [r.x1, r.x2], type: 'scatter', mode: 'markers', name: currentLang === 'es' ? 'Datos medidos' : 'Measured data', marker: { color: '#3634A3', size: 9 } }
+    { x: data.map((d) => d.day), y: data.map((d) => d.xv),
+      type: 'scatter', mode: 'lines+markers', name: 'Xv',
+      line: { color: '#34C759', width: 2.5 }, marker: { size: 7, color: '#1A8A3A' } },
+    { x: data.map((d) => d.day), y: accTrap,
+      type: 'scatter', mode: 'lines+markers',
+      name: currentLang === 'es' ? 'IVCD trapezoidal' : 'Trapezoidal IVCD',
+      yaxis: 'y2',
+      line: { color: '#1A8A3A', width: 2.5, dash: 'dot' }, marker: { size: 6, color: '#1A8A3A' } },
+    { x: data.map((d) => d.day), y: accLog,
+      type: 'scatter', mode: 'lines+markers',
+      name: currentLang === 'es' ? 'IVCD logarítmica' : 'Logarithmic IVCD',
+      yaxis: 'y2',
+      line: { color: '#0062CC', width: 2.5 }, marker: { size: 6, color: '#0062CC' } }
   ], {
-    margin: { l: 68, r: 24, t: 10, b: 55 },
+    margin: { l: 65, r: 85, t: 10, b: 55 },
     paper_bgcolor: 'rgba(0,0,0,0)',
     plot_bgcolor: 'rgba(242,242,247,0.6)',
     hovermode: 'x unified',
     legend: { orientation: 'h', y: 1.14, x: 0 },
     xaxis: { title: t('plotXTitle'), gridcolor: 'rgba(60,60,67,0.1)' },
-    yaxis: { title: t('plotYGrowth'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)' }
+    yaxis: { title: t('plotYGrowth'), rangemode: 'tozero', gridcolor: 'rgba(60,60,67,0.1)' },
+    yaxis2: { title: yAxisTitle, overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false },
+    shapes: [{ type: 'rect', x0: r.t1, x1: r.t2, y0: 0, y1: 1,
+      xref: 'x', yref: 'paper',
+      fillcolor: 'rgba(88,86,214,0.10)',
+      line: { color: '#5856D6', width: 1.5, dash: 'dash' }, layer: 'below' }]
   }, { responsive: true, displaylogo: false });
 
-  el('compareBatchBtn').classList.toggle('btn-scale-active', compareSource === 'batch');
-  el('compareFedBtn').classList.toggle('btn-scale-active', compareSource === 'fed');
+  // Numerical substitution — both methods with actual values
+  const explainEl = el('logIvcdExplain');
+  const uCell  = currentLang === 'es' ? '\\text{cél/mL}'   : '\\text{cells/mL}';
+  const uCellD = currentLang === 'es' ? '\\text{cél·d/mL}' : '\\text{cells·d/mL}';
+  if (window.MathJax) MathJax.typesetClear([explainEl]);
+  explainEl.innerHTML = [
+    `<div class="equation">$$IVCD_{\\text{trap}}=\\sum_i\\frac{X_{v,i}+X_{v,i+1}}{2}\\,\\Delta t_i=\\mathbf{${fmt(r.ivcd,3)}}\\;\\times10^6\\;${uCellD}$$</div>`,
+    `<div class="equation">$$L(X_1,X_2)=\\frac{${fmt(r.x2,3)}-${fmt(r.x1,3)}}{\\ln\\!\\left(\\dfrac{${fmt(r.x2,3)}}{${fmt(r.x1,3)}}\\right)}=${fmt(r.logMean,3)}\\;\\times10^6\\;${uCell}$$</div>`,
+    `<div class="equation">$$IVCD_{\\log}=${fmt(r.logMean,3)}\\times${fmt(r.dtD,2)}\\;\\text{d}=\\mathbf{${fmt(r.ivcdLog,3)}}\\;\\times10^6\\;${uCellD}$$</div>`
+  ].join('');
+  if (window.MathJax && window.MathJax.typesetPromise) MathJax.typesetPromise([explainEl]);
 }
 
 const SECTION_IDS = { lote: 'seccion-lote', fed: 'seccion-fed', compare: 'seccion-compare' };
@@ -762,9 +767,8 @@ function applyTranslations() {
     'fedFormulaTitle','fedFormulaLead','fedFormulaChip',
     'fedFMuTitle','fedFMuLead','fedFNormTitle','fedFNormLead','fedFQTitle','fedFQLead',
     'fedExplainTitle','fedExplainLead',
-    'section3Chip','section3Title','section3Lead','compareTitle','compareLead','compareMetric1','compareMetric2','compareMetric3','compareMetric4',
-    'logIvcdHowTitle','logIvcdHowCopy','logIvcdExplainTitle','logIvcdExplainLead','logIvcdPlotTitle','logIvcdPlotLead',
-    'compareBatchBtn','compareFedBtn'
+    'section3Chip','section3Title','section3Lead','compareTitle','compareMetric1','compareMetric2','compareMetric3','compareMetric4',
+    'logIvcdHowTitle','logIvcdHowCopy','logIvcdExplainTitle','logIvcdExplainLead','logIvcdPlotTitle','logIvcdPlotLead'
   ].forEach((id) => {
     const node = el(id);
     if (node) node.innerHTML = t(id);
@@ -863,7 +867,6 @@ async function init() {
     const shapes = fedPlotShapes();
     Plotly.relayout('fedGrowthPlot', { shapes });
     Plotly.relayout('fedMetPlot', { shapes });
-    renderCompareSection();
   }
   window.setFedStart = (idx) => {
     fedStart = idx;
@@ -875,15 +878,6 @@ async function init() {
     fedEnd = idx;
     refreshFed();
   };
-  el('compareBatchBtn').addEventListener('click', () => {
-    compareSource = 'batch';
-    renderCompareSection();
-  });
-  el('compareFedBtn').addEventListener('click', () => {
-    compareSource = 'fed';
-    renderCompareSection();
-  });
-
   el('navBatch').addEventListener('click',   () => switchSection('lote'));
   el('navFed').addEventListener('click',     () => switchSection('fed'));
   el('navCompare').addEventListener('click', () => switchSection('compare'));
