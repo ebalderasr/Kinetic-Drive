@@ -7,7 +7,8 @@ let currentLang = 'es';
 let growthScale = 'linear';
 let batchStart = 0;
 let batchEnd = 1;
-let fedActiveInterval = 0;
+let fedStart = 0;
+let fedEnd = 1;
 let compareSource = 'batch';
 
 const datasets = {
@@ -15,7 +16,6 @@ const datasets = {
   fed: []
 };
 
-let fedIntervals = [];
 let fedAuditRows = [];
 
 const el = (id) => document.getElementById(id);
@@ -252,54 +252,76 @@ function activeBatchInterval() {
   return calcBatchInterval(datasets.batch, batchStart, batchEnd);
 }
 
+function calcFedInterval(data, startIdx, endIdx) {
+  const a = data[startIdx];
+  const b = data[endIdx];
+  const dtD = b.day - a.day;
+  const dtH = dtD * 24;
+
+  let ivcd = 0;
+  for (let i = startIdx; i < endIdx; i++) {
+    ivcd += ((data[i].xv + data[i + 1].xv) / 2) * (data[i + 1].day - data[i].day);
+  }
+
+  let itvc = null;
+  const allHaveVol = data.slice(startIdx, endIdx + 1).every((row) => Number.isFinite(row.vol_mL));
+  if (allHaveVol) {
+    itvc = 0;
+    for (let i = startIdx; i < endIdx; i++) {
+      const tc1i = data[i].xv * data[i].vol_mL;
+      const tc2i = data[i + 1].xv * data[i + 1].vol_mL;
+      itvc += ((tc1i + tc2i) / 2) * (data[i + 1].day - data[i].day);
+    }
+  }
+
+  const firstFeedIdx = data.findIndex((row) => row.isPostFeed);
+  const method = (firstFeedIdx !== -1 && endIdx >= firstFeedIdx) ? 'fed_mass' : 'batch';
+
+  let hasSkip = false;
+  for (let i = startIdx; i < endIdx; i++) {
+    if (!data[i].isPostFeed && data[i + 1].isPostFeed) { hasSkip = true; break; }
+  }
+
+  const logMean = calcLogMean(a.xv, b.xv);
+  const tc1 = a.totalCells_1e6;
+  const tc2 = b.totalCells_1e6;
+  const glcM1 = totalMmol(a.glc_mM, a.vol_mL);
+  const glcM2 = totalMmol(b.glc_mM, b.vol_mL);
+  const lacM1 = totalMmol(a.lac_mM, a.vol_mL);
+  const lacM2 = totalMmol(b.lac_mM, b.vol_mL);
+  const pM1 = totalMg(a.product_mgL, a.vol_mL);
+  const pM2 = totalMg(b.product_mgL, b.vol_mL);
+
+  const qGlc = method === 'batch'
+    ? diffIfBoth(a.glc_mM, b.glc_mM, (v1, v2) => (v1 - v2) / ivcd)
+    : (Number.isFinite(glcM1) && Number.isFinite(glcM2) && itvc ? ((glcM1 - glcM2) / itvc) * 1000 : null);
+  const qLac = method === 'batch'
+    ? diffIfBoth(a.lac_mM, b.lac_mM, (v1, v2) => (v2 - v1) / ivcd)
+    : (Number.isFinite(lacM1) && Number.isFinite(lacM2) && itvc ? ((lacM2 - lacM1) / itvc) * 1000 : null);
+  const qP = method === 'batch'
+    ? diffIfBoth(a.product_mgL, b.product_mgL, (v1, v2) => (v2 - v1) / ivcd)
+    : (Number.isFinite(pM1) && Number.isFinite(pM2) && itvc ? ((pM2 - pM1) / itvc) * 1000 : null);
+
+  return {
+    t1: a.day, t2: b.day, dtD, dtH,
+    x1: a.xv, x2: b.xv,
+    mu: (Math.log(b.xv) - Math.log(a.xv)) / dtH,
+    ivcd, itvc, method, hasSkip,
+    logMean, ivcdLog: logMean !== null ? logMean * dtD : null,
+    start: a, end: b,
+    tc1, tc2, glcM1, glcM2, lacM1, lacM2, pM1, pM2,
+    qGlc, qLac, qP
+  };
+}
+
 function activeFedDescriptor() {
-  return fedIntervals[fedActiveInterval];
+  if (!datasets.fed.length) return null;
+  return { start: datasets.fed[fedStart], end: datasets.fed[fedEnd] };
 }
 
 function activeFedIntervalData() {
-  const desc = activeFedDescriptor();
-  if (!desc) return null;
-  const a = desc.start;
-  const b = desc.end;
-  const dtD = b.day - a.day;
-  const dtH = dtD * 24;
-  const ivcd = ((a.xv + b.xv) / 2) * dtD;
-  const tc1 = a.totalCells_1e6;
-  const tc2 = b.totalCells_1e6;
-  const itvc = Number.isFinite(tc1) && Number.isFinite(tc2) ? ((tc1 + tc2) / 2) * dtD : null;
-  const glcMass1 = totalMmol(a.glc_mM, a.vol_mL);
-  const glcMass2 = totalMmol(b.glc_mM, b.vol_mL);
-  const lacMass1 = totalMmol(a.lac_mM, a.vol_mL);
-  const lacMass2 = totalMmol(b.lac_mM, b.vol_mL);
-  const pMass1 = totalMg(a.product_mgL, a.vol_mL);
-  const pMass2 = totalMg(b.product_mgL, b.vol_mL);
-  const logMean = calcLogMean(a.xv, b.xv);
-  return {
-    ...desc,
-    dtD,
-    dtH,
-    ivcd,
-    tc1,
-    tc2,
-    itvc,
-    glcMass1,
-    glcMass2,
-    lacMass1,
-    lacMass2,
-    pMass1,
-    pMass2,
-    logMean,
-    ivcdLog: logMean !== null ? logMean * dtD : null,
-    qGlc: desc.method === 'batch'
-      ? diffIfBoth(a.glc_mM, b.glc_mM, (v1, v2) => (v1 - v2) / ivcd)
-      : diffIfBoth(glcMass1, glcMass2, (m1, m2) => itvc ? ((m1 - m2) / itvc) * 1000 : null),
-    qLac: desc.method === 'batch'
-      ? diffIfBoth(a.lac_mM, b.lac_mM, (v1, v2) => (v2 - v1) / ivcd)
-      : diffIfBoth(lacMass1, lacMass2, (m1, m2) => itvc ? ((m2 - m1) / itvc) * 1000 : null),
-    qP: desc.method === 'batch'
-      ? diffIfBoth(a.product_mgL, b.product_mgL, (v1, v2) => (v2 - v1) / ivcd)
-      : diffIfBoth(pMass1, pMass2, (m1, m2) => itvc ? ((m2 - m1) / itvc) * 1000 : null)
-  };
+  if (!datasets.fed.length) return null;
+  return calcFedInterval(datasets.fed, fedStart, fedEnd);
 }
 
 function batchRows() {
@@ -425,15 +447,25 @@ function fillBatchTable() {
 }
 
 function populateFedControls() {
-  el('fedBtnRow').innerHTML = fedIntervals.map((interval, idx) => {
-    const isActive = idx === fedActiveInterval;
-    const methodTag = interval.method === 'batch'
-      ? (currentLang === 'es' ? 'pre-feed' : 'pre-feed')
-      : (currentLang === 'es' ? 'post-feed' : 'post-feed');
+  const data = datasets.fed;
+
+  el('fedStartBtnRow').innerHTML = data.slice(0, -1).map((d, idx) => {
+    const isActive = idx === fedStart;
     const sty = isActive
       ? 'background:#5856D6;color:white;border:1px solid #5856D6;box-shadow:0 3px 10px rgba(88,86,214,0.35);'
       : 'background:rgba(255,255,255,0.85);color:rgba(0,0,0,0.7);border:1px solid rgba(0,0,0,0.1);';
-    return `<button onclick="window.setFedInterval(${idx})" style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${interval.label} <span style="font-size:11px;opacity:0.7;">(${methodTag})</span></button>`;
+    return `<button onclick="window.setFedStart(${idx})" style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${fmt(d.day, 1)}</button>`;
+  }).join('');
+
+  el('fedEndBtnRow').innerHTML = data.slice(1).map((d, idx) => {
+    const realIdx = idx + 1;
+    const isActive = realIdx === fedEnd;
+    const isDisabled = realIdx <= fedStart;
+    let sty;
+    if (isActive) sty = 'background:#3634A3;color:white;border:1px solid #3634A3;box-shadow:0 3px 10px rgba(54,52,163,0.35);';
+    else if (isDisabled) sty = 'background:transparent;color:rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.05);cursor:not-allowed;opacity:0.5;';
+    else sty = 'background:rgba(255,255,255,0.85);color:rgba(0,0,0,0.7);border:1px solid rgba(0,0,0,0.1);';
+    return `<button onclick="window.setFedEnd(${realIdx})" ${isDisabled ? 'disabled' : ''} style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${fmt(d.day, 1)}</button>`;
   }).join('');
 }
 
@@ -441,18 +473,32 @@ function renderFedSection() {
   const r = activeFedIntervalData();
   if (!r) return;
   const isBatchLike = r.method === 'batch';
+  const ivcdUnits = currentLang === 'es' ? '×10⁶ cél·d/mL' : '×10⁶ cells·day/mL';
+  const itvcUnits = currentLang === 'es' ? '×10⁶ cél·d' : '×10⁶ cells·day';
+
+  // Method chip
   const methodLabel = isBatchLike
     ? (currentLang === 'es' ? 'Concentración + IVCD' : 'Concentration + IVCD')
     : (currentLang === 'es' ? 'Masas totales + ITVC' : 'Total masses + ITVC');
-  const normLabel = isBatchLike
-    ? `${currentLang === 'es' ? 'IVCD' : 'IVCD'} = ${fmt(r.ivcd, 3)}`
-    : `${currentLang === 'es' ? 'ITVC' : 'ITVC'} = ${fmt(r.itvc, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d' : 'cells·day'}`;
-  el('fedModeOut').textContent = methodLabel;
+  el('fedModeChip').textContent = methodLabel;
+  el('fedModeChip').className = `chip ${isBatchLike ? 'chip-indigo' : 'chip-blue'}`;
+
+  // Main metrics
+  el('fedDeltaTimeOut').textContent = `${fmt(r.dtD, 2)} d`;
   el('fedMuOut').innerHTML = `${fmt(r.mu, 4)} h⁻¹<br><span style="font-size:0.82em;opacity:0.6;">${fmt(r.mu * 24, 3)} d⁻¹</span>`;
-  el('fedNormOut').textContent = normLabel;
+  el('fedIvcdOut').textContent = `${fmt(r.ivcd, 3)} ${ivcdUnits}`;
   el('fedQGlcOut').textContent = `${fmt(r.qGlc, 3)} pmol/cel/d`;
   el('fedQLacOut').textContent = `${fmt(r.qLac, 3)} pmol/cel/d`;
   el('fedQPOut').textContent = `${fmt(r.qP, 3)} pg/cel/d`;
+
+  // ITVC row: show only when post-feed and itvc available
+  const itvcRow = el('fedItvcRow');
+  if (!isBatchLike && r.itvc !== null) {
+    itvcRow.style.display = '';
+    el('fedItvcOut').textContent = `${fmt(r.itvc, 3)} ${itvcUnits}`;
+  } else {
+    itvcRow.style.display = 'none';
+  }
 
   const a = r.start;
   const b = r.end;
@@ -478,9 +524,9 @@ function renderFedSection() {
       `qP   = (${fmt(b.product_mgL, 3)} − ${fmt(a.product_mgL, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qP, 3)}</strong>`;
   } else {
     el('fedFQExplain').innerHTML =
-      `ΔMGlc = (${fmt(r.glcMass1, 3)} − ${fmt(r.glcMass2, 3)}) mmol → qGlc = <strong>${fmt(r.qGlc, 3)}</strong><br>` +
-      `ΔMLac = (${fmt(r.lacMass2, 3)} − ${fmt(r.lacMass1, 3)}) mmol → qLac = <strong>${fmt(r.qLac, 3)}</strong><br>` +
-      `ΔMP   = (${fmt(r.pMass2, 3)} − ${fmt(r.pMass1, 3)}) mg → qP = <strong>${fmt(r.qP, 3)}</strong>`;
+      `ΔMGlc = (${fmt(r.glcM1, 3)} − ${fmt(r.glcM2, 3)}) mmol → qGlc = <strong>${fmt(r.qGlc, 3)}</strong><br>` +
+      `ΔMLac = (${fmt(r.lacM2, 3)} − ${fmt(r.lacM1, 3)}) mmol → qLac = <strong>${fmt(r.qLac, 3)}</strong><br>` +
+      `ΔMP   = (${fmt(r.pM2, 3)} − ${fmt(r.pM1, 3)}) mg → qP = <strong>${fmt(r.qP, 3)}</strong>`;
   }
 
   // Combined reading (card 4)
@@ -488,7 +534,16 @@ function renderFedSection() {
     ? `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>IVCD = ((${fmt(a.xv, 3)} + ${fmt(b.xv, 3)}) / 2) × ${fmt(r.dtD, 2)} d = <strong>${fmt(r.ivcd, 3)}</strong><br>qGlc = (${fmt(a.glc_mM, 3)} − ${fmt(b.glc_mM, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qGlc, 3)}</strong>`
     : `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>TC = Xv·V: (${fmt(a.xv, 3)}×${fmt(a.vol_mL, 2)}) y (${fmt(b.xv, 3)}×${fmt(b.vol_mL, 2)}) = <strong>${fmt(r.tc1, 3)}</strong>, <strong>${fmt(r.tc2, 3)}</strong><br>ITVC = ((${fmt(r.tc1, 3)} + ${fmt(r.tc2, 3)}) / 2) × ${fmt(r.dtD, 2)} = <strong>${fmt(r.itvc, 3)}</strong><br>qGlc = (M1 − M2) / ITVC = <strong>${fmt(r.qGlc, 3)}</strong>`;
 
-  el('fedExplainNote').textContent = r.note;
+  // Note
+  if (r.hasSkip) {
+    el('fedExplainNote').textContent = currentLang === 'es'
+      ? '⚠ El intervalo cruza un evento de feed (FALSE → TRUE). Los resultados pueden no reflejar actividad celular pura.'
+      : '⚠ Interval crosses a feed event (FALSE → TRUE). Results may not reflect pure cellular activity.';
+  } else {
+    el('fedExplainNote').textContent = isBatchLike
+      ? (currentLang === 'es' ? 'Antes del primer feed: usar concentración + IVCD.' : 'Before first feed: use concentration + IVCD.')
+      : (currentLang === 'es' ? 'Post-feed: usar masas totales e ITVC con el volumen medido.' : 'Post-feed: use total masses and ITVC with the measured volume.');
+  }
 }
 
 function fedPlotShapes() {
@@ -677,7 +732,7 @@ function applyTranslations() {
     'batchSelectorTitle','batchSelectorDesc','startRowLabel','endRowLabel','mLabelDt','mLabelMu','mLabelIvcd','mLabelQglc','mLabelQLac','mLabelQp',
     'intervalExampleNote','plot1Title','plot1Lead','plot2Title','plot2Lead','formulaMainTitle','formulaMainLead','formulaChip',
     'muTitle','muLead','ivcdTitle','ivcdLead','qglcTitle','qglcLead','yieldTitle','yieldLead','tableTitle','tableLead','csvBtn',
-    'section2Chip','section2Title','section2Lead','fedSelectorTitle','fedSelectorLead','fedSelectorLabel','fedMetricMode','fedMetricMu','fedMetricNorm','fedMetricQglc','fedMetricQlac','fedMetricQp',
+    'section2Chip','section2Title','section2Lead','fedSelectorTitle','fedSelectorLead','fedStartLabel','fedEndLabel','fedLabelDt','fedMetricMu','fedMetricIvcd','fedMetricItvc','fedMetricQglc','fedMetricQlac','fedMetricQp',
     'fedPlot1Title','fedPlot1Lead','fedPlot2Title','fedPlot2Lead','fedTableTitle','fedTableLead',
     'fedThInterval','fedThStatus','fedThMethod','fedThMu','fedThNote',
     'fedFormulaTitle','fedFormulaLead','fedFormulaChip',
@@ -711,9 +766,9 @@ function applyTranslations() {
   el('thYx').textContent = t('thYx');
   el('thYp').textContent = t('thYp');
   const fedMeta = buildFedMetadata(datasets.fed);
-  fedIntervals = fedMeta.validIntervals;
   fedAuditRows = fedMeta.audit;
-  if (fedActiveInterval >= fedIntervals.length) fedActiveInterval = 0;
+  if (fedEnd >= datasets.fed.length) fedEnd = Math.max(1, datasets.fed.length - 1);
+  if (fedStart >= fedEnd) fedStart = fedEnd - 1;
   renderAll();
 }
 
@@ -759,7 +814,6 @@ async function init() {
   datasets.batch = await loadDataset('./Datos_lote.csv');
   datasets.fed = await loadDataset('./Datos_lote_alimentado.csv');
   const fedMeta = buildFedMetadata(datasets.fed);
-  fedIntervals = fedMeta.validIntervals;
   fedAuditRows = fedMeta.audit;
 
   el('dataLinearBtn').addEventListener('click', () => {
@@ -779,14 +833,23 @@ async function init() {
     applyTranslations();
   });
   el('csvBtn').addEventListener('click', downloadBatchCSV);
-  window.setFedInterval = (idx) => {
-    fedActiveInterval = idx;
+  function refreshFed() {
     populateFedControls();
     renderFedSection();
     const shapes = fedPlotShapes();
     Plotly.relayout('fedGrowthPlot', { shapes });
     Plotly.relayout('fedMetPlot', { shapes });
     renderCompareSection();
+  }
+  window.setFedStart = (idx) => {
+    fedStart = idx;
+    if (fedEnd <= fedStart) fedEnd = Math.min(fedStart + 1, datasets.fed.length - 1);
+    refreshFed();
+  };
+  window.setFedEnd = (idx) => {
+    if (idx <= fedStart) return;
+    fedEnd = idx;
+    refreshFed();
   };
   el('compareBatchBtn').addEventListener('click', () => {
     compareSource = 'batch';
