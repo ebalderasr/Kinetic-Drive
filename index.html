@@ -56,15 +56,15 @@
   <div class="hc-subheader">
     <div class="hc-subheader-inner">
       <div class="segmented-control" role="navigation" aria-label="Secciones">
-        <a id="navBatch" class="seg-btn active" href="#seccion-lote">🧪 <span id="navBatchLabel">Lote</span></a>
-        <a id="navFed" class="seg-btn" href="#seccion-fed">🧫 <span id="navFedLabel">Lote alimentado</span></a>
-        <a id="navCompare" class="seg-btn" href="#seccion-compare">∫ <span id="navCompareLabel">IVCD</span></a>
+        <button id="navBatch" class="seg-btn active" type="button">🧪 <span id="navBatchLabel">Lote</span></button>
+        <button id="navFed" class="seg-btn" type="button">🧫 <span id="navFedLabel">Lote alimentado</span></button>
+        <button id="navCompare" class="seg-btn" type="button">∫ <span id="navCompareLabel">IVCD</span></button>
       </div>
     </div>
   </div>
 
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-    <section id="seccion-lote" class="module-shell module-shell-teaching space-y-6">
+    <section id="seccion-lote" class="module-shell module-shell-teaching space-y-6 is-active">
       <div class="section-band">
         <div>
           <div id="section1Chip" class="chip chip-indigo">Sección 1 · Lote</div>
@@ -346,7 +346,7 @@
           <div class="card p-4">
             <h3 id="logIvcdExplainTitle" class="text-lg font-black">Sustitución del intervalo activo</h3>
             <p id="logIvcdExplainLead" class="subtle mt-1">El texto cambia según la fuente elegida y usa el intervalo activo de cada sección.</p>
-            <p id="logIvcdExplain" class="mt-4 text-sm leading-7 mono" style="color:var(--label);"></p>
+            <div id="logIvcdExplain" class="mt-4 space-y-2"></div>
             <p id="logIvcdCompare" class="subtle mt-3"></p>
           </div>
         </div>

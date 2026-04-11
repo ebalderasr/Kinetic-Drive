@@ -571,10 +571,15 @@ function renderCompareSection() {
   el('logIvcdOut').textContent = `${fmt(r.ivcdLog, 3)} ×10⁶ ${currentLang === 'es' ? 'cél·d/mL' : 'cells·day/mL'}`;
   el('logMeanOut').textContent = `${fmt(r.logMean, 3)} ×10⁶ ${currentLang === 'es' ? 'cél/mL' : 'cells/mL'}`;
   el('ivcdDiffOut').textContent = diffPct === null ? t('noData') : `${fmt(diffPct, 2)} %`;
-  el('logIvcdExplain').innerHTML =
-    `L(X_0,X_1) = (${fmt(r.x2, 3)} − ${fmt(r.x1, 3)}) / ln(${fmt(r.x2, 3)} / ${fmt(r.x1, 3)}) = <strong>${fmt(r.logMean, 3)}</strong><br>` +
-    `IVCD_{log} = ${fmt(r.logMean, 3)} × ${fmt(r.dtD, 2)} d = <strong>${fmt(r.ivcdLog, 3)}</strong><br>` +
-    `IVCD_{trap} = <strong>${fmt(r.ivcd, 3)}</strong>`;
+  const explainEl = el('logIvcdExplain');
+  const uCell  = currentLang === 'es' ? '\\text{cél/mL}'     : '\\text{cells/mL}';
+  const uCellD = currentLang === 'es' ? '\\text{cél·d/mL}'   : '\\text{cells·d/mL}';
+  if (window.MathJax) MathJax.typesetClear([explainEl]);
+  explainEl.innerHTML =
+    `<div class="equation">$$L(X_0,\\,X_1)=\\frac{${fmt(r.x2,3)}-${fmt(r.x1,3)}}{\\ln\\!\\left(\\dfrac{${fmt(r.x2,3)}}{${fmt(r.x1,3)}}\\right)}=${fmt(r.logMean,3)}\\;\\times10^6\\;${uCell}$$</div>` +
+    `<div class="equation">$$IVCD_{\\log}=${fmt(r.logMean,3)}\\times${fmt(r.dtD,2)}\\;\\text{d}=\\mathbf{${fmt(r.ivcdLog,3)}}\\;\\times10^6\\;${uCellD}$$</div>` +
+    `<div class="equation">$$IVCD_{\\text{trap}}=\\mathbf{${fmt(r.ivcd,3)}}\\;\\times10^6\\;${uCellD}$$</div>`;
+  if (window.MathJax && window.MathJax.typesetPromise) MathJax.typesetPromise([explainEl]);
   el('logIvcdCompare').textContent = `${r.sourceNote} ${currentLang === 'es' ? 'La diferencia relativa entre ambos métodos es' : 'The relative difference between both methods is'} ${fmt(Math.abs(diffPct), 2)} %.`;
 
   const samples = 60;
@@ -606,6 +611,29 @@ function renderCompareSection() {
 
   el('compareBatchBtn').classList.toggle('btn-scale-active', compareSource === 'batch');
   el('compareFedBtn').classList.toggle('btn-scale-active', compareSource === 'fed');
+}
+
+const SECTION_IDS = { lote: 'seccion-lote', fed: 'seccion-fed', compare: 'seccion-compare' };
+const NAV_IDS     = { lote: 'navBatch',     fed: 'navFed',     compare: 'navCompare'  };
+let activeSection = 'lote';
+
+function switchSection(name) {
+  activeSection = name;
+  Object.keys(SECTION_IDS).forEach((key) => {
+    el(SECTION_IDS[key]).classList.toggle('is-active', key === name);
+    el(NAV_IDS[key]).classList.toggle('active', key === name);
+  });
+  requestAnimationFrame(() => {
+    if (name === 'lote') {
+      Plotly.Plots.resize('growthPlotData');
+      Plotly.Plots.resize('metPlotData');
+    } else if (name === 'fed') {
+      Plotly.Plots.resize('fedGrowthPlot');
+      Plotly.Plots.resize('fedMetPlot');
+    } else if (name === 'compare') {
+      Plotly.Plots.resize('comparePlot');
+    }
+  });
 }
 
 function renderAll() {
@@ -741,6 +769,10 @@ async function init() {
     compareSource = 'fed';
     renderCompareSection();
   });
+
+  el('navBatch').addEventListener('click',   () => switchSection('lote'));
+  el('navFed').addEventListener('click',     () => switchSection('fed'));
+  el('navCompare').addEventListener('click', () => switchSection('compare'));
 
   applyTranslations();
 }

@@ -96,10 +96,14 @@ main {
 
 /* ── Module shell (outer container for each section) ── */
 .module-shell {
+  display: none;
   border-radius: var(--radius-module);
   padding: 1.1rem;
   box-shadow: var(--shadow-lg);
   border: 1px solid rgba(255,255,255,0.7);
+}
+.module-shell.is-active {
+  display: block;
 }
 .module-shell-teaching {
   background: linear-gradient(160deg, rgba(88,86,214,0.07) 0%, rgba(255,255,255,0.65) 100%);
@@ -278,11 +282,12 @@ main {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
   white-space: nowrap;
   min-height: 36px;
   outline: none;
   font-family: inherit;
+  text-decoration: none;
 }
 .seg-btn.active {
   background: rgba(255,255,255,0.92);
