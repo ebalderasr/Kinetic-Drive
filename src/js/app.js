@@ -310,30 +310,6 @@ function batchRows() {
 
 function populateBatchControls() {
   const data = datasets.batch;
-  const n = data.length;
-  const leftPct = (batchStart / (n - 1)) * 100;
-  const rightPct = (batchEnd / (n - 1)) * 100;
-  el('timelineRangeTrack').style.left = `${leftPct}%`;
-  el('timelineRangeTrack').style.width = `${rightPct - leftPct}%`;
-
-  el('timelineNodeRow').innerHTML = data.map((d, idx) => {
-    const isStart = idx === batchStart;
-    const isEnd = idx === batchEnd;
-    const inRange = idx > batchStart && idx < batchEnd;
-    let bg = 'white';
-    let border = 'rgba(0,0,0,0.12)';
-    let color = 'rgba(60,60,67,0.5)';
-    let scale = '';
-    if (isStart) { bg = '#5856D6'; border = '#5856D6'; color = 'white'; scale = 'transform:scale(1.2);'; }
-    else if (isEnd) { bg = '#3634A3'; border = '#3634A3'; color = 'white'; scale = 'transform:scale(1.2);'; }
-    else if (inRange) { bg = 'rgba(88,86,214,0.12)'; border = 'rgba(88,86,214,0.4)'; color = '#5856D6'; }
-    return `<div onclick="window.setBatchRange(${idx})" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 2px 8px rgba(0,0,0,0.1);border:2px solid ${border};background:${bg};color:${color};${scale}">${fmt(d.day, 1)}</div>`;
-  }).join('');
-
-  el('timelineLabelRow').innerHTML = data.map((d, idx) => {
-    const isActive = idx === batchStart || idx === batchEnd;
-    return `<span style="font-size:11px;font-weight:${isActive ? '700' : '500'};color:${isActive ? '#5856D6' : 'rgba(60,60,67,0.4)'};text-align:center;line-height:1.2;">${t('dayLabel')}<br>${fmt(d.day, 1)}</span>`;
-  }).join('');
 
   el('startBtnRow').innerHTML = data.slice(0, -1).map((d, idx) => {
     const isActive = idx === batchStart;
@@ -449,13 +425,16 @@ function fillBatchTable() {
 }
 
 function populateFedControls() {
-  el('fedIntervalSelect').innerHTML = fedIntervals.map((interval, idx) => {
-    const methodLabel = interval.method === 'batch'
+  el('fedBtnRow').innerHTML = fedIntervals.map((interval, idx) => {
+    const isActive = idx === fedActiveInterval;
+    const methodTag = interval.method === 'batch'
       ? (currentLang === 'es' ? 'pre-feed' : 'pre-feed')
       : (currentLang === 'es' ? 'post-feed' : 'post-feed');
-    return `<option value="${idx}">${interval.label} · ${methodLabel}</option>`;
+    const sty = isActive
+      ? 'background:#0062CC;color:white;border:1px solid #0062CC;box-shadow:0 3px 10px rgba(0,98,204,0.35);'
+      : 'background:rgba(255,255,255,0.85);color:rgba(0,0,0,0.7);border:1px solid rgba(0,0,0,0.1);';
+    return `<button onclick="window.setFedInterval(${idx})" style="padding:7px 14px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;${sty}">${t('dayLabel')} ${interval.label} <span style="font-size:11px;opacity:0.7;">(${methodTag})</span></button>`;
   }).join('');
-  el('fedIntervalSelect').value = String(fedActiveInterval);
 }
 
 function renderFedSection() {
@@ -477,9 +456,38 @@ function renderFedSection() {
 
   const a = r.start;
   const b = r.end;
+
+  // μ explain
+  el('fedFMuExplain').innerHTML = `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong>`;
+
+  // Normalizer explain
+  if (isBatchLike) {
+    el('fedFNormExplain').innerHTML = `IVCD = ((${fmt(a.xv, 3)} + ${fmt(b.xv, 3)}) / 2) × ${fmt(r.dtD, 2)} d = <strong>${fmt(r.ivcd, 3)}</strong>`;
+  } else {
+    el('fedFNormExplain').innerHTML =
+      `TC₁ = ${fmt(a.xv, 3)} × ${fmt(a.vol_mL, 2)} mL = <strong>${fmt(r.tc1, 3)}</strong> ×10⁶ cél<br>` +
+      `TC₂ = ${fmt(b.xv, 3)} × ${fmt(b.vol_mL, 2)} mL = <strong>${fmt(r.tc2, 3)}</strong> ×10⁶ cél<br>` +
+      `ITVC = ((${fmt(r.tc1, 3)} + ${fmt(r.tc2, 3)}) / 2) × ${fmt(r.dtD, 2)} = <strong>${fmt(r.itvc, 3)}</strong>`;
+  }
+
+  // Rates explain
+  if (isBatchLike) {
+    el('fedFQExplain').innerHTML =
+      `qGlc = (${fmt(a.glc_mM, 3)} − ${fmt(b.glc_mM, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qGlc, 3)}</strong><br>` +
+      `qLac = (${fmt(b.lac_mM, 3)} − ${fmt(a.lac_mM, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qLac, 3)}</strong><br>` +
+      `qP   = (${fmt(b.product_mgL, 3)} − ${fmt(a.product_mgL, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qP, 3)}</strong>`;
+  } else {
+    el('fedFQExplain').innerHTML =
+      `ΔMGlc = (${fmt(r.glcMass1, 3)} − ${fmt(r.glcMass2, 3)}) mmol → qGlc = <strong>${fmt(r.qGlc, 3)}</strong><br>` +
+      `ΔMLac = (${fmt(r.lacMass2, 3)} − ${fmt(r.lacMass1, 3)}) mmol → qLac = <strong>${fmt(r.qLac, 3)}</strong><br>` +
+      `ΔMP   = (${fmt(r.pMass2, 3)} − ${fmt(r.pMass1, 3)}) mg → qP = <strong>${fmt(r.qP, 3)}</strong>`;
+  }
+
+  // Combined reading (card 4)
   el('fedExplain').innerHTML = isBatchLike
     ? `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>IVCD = ((${fmt(a.xv, 3)} + ${fmt(b.xv, 3)}) / 2) × ${fmt(r.dtD, 2)} d = <strong>${fmt(r.ivcd, 3)}</strong><br>qGlc = (${fmt(a.glc_mM, 3)} − ${fmt(b.glc_mM, 3)}) / ${fmt(r.ivcd, 3)} = <strong>${fmt(r.qGlc, 3)}</strong>`
     : `μ = [ln(${fmt(b.xv, 3)}) − ln(${fmt(a.xv, 3)})] / ${fmt(r.dtH, 2)} h = <strong>${fmt(r.mu, 4)} h⁻¹</strong><br>TC = Xv·V: (${fmt(a.xv, 3)}×${fmt(a.vol_mL, 2)}) y (${fmt(b.xv, 3)}×${fmt(b.vol_mL, 2)}) = <strong>${fmt(r.tc1, 3)}</strong>, <strong>${fmt(r.tc2, 3)}</strong><br>ITVC = ((${fmt(r.tc1, 3)} + ${fmt(r.tc2, 3)}) / 2) × ${fmt(r.dtD, 2)} = <strong>${fmt(r.itvc, 3)}</strong><br>qGlc = (M1 − M2) / ITVC = <strong>${fmt(r.qGlc, 3)}</strong>`;
+
   el('fedExplainNote').textContent = r.note;
 }
 
@@ -658,8 +666,11 @@ function applyTranslations() {
     'intervalExampleNote','plot1Title','plot1Lead','plot2Title','plot2Lead','formulaMainTitle','formulaMainLead','formulaChip',
     'muTitle','muLead','ivcdTitle','ivcdLead','qglcTitle','qglcLead','yieldTitle','yieldLead','tableTitle','tableLead','csvBtn',
     'section2Chip','section2Title','section2Lead','fedSelectorTitle','fedSelectorLead','fedSelectorLabel','fedMetricMode','fedMetricMu','fedMetricNorm','fedMetricQglc','fedMetricQlac','fedMetricQp',
-    'fedHowTitle','fedHowCopy','fedExplainTitle','fedExplainLead','fedPlot1Title','fedPlot1Lead','fedPlot2Title','fedPlot2Lead','fedTableTitle','fedTableLead',
+    'fedPlot1Title','fedPlot1Lead','fedPlot2Title','fedPlot2Lead','fedTableTitle','fedTableLead',
     'fedThInterval','fedThStatus','fedThMethod','fedThMu','fedThNote',
+    'fedFormulaTitle','fedFormulaLead','fedFormulaChip',
+    'fedFMuTitle','fedFMuLead','fedFNormTitle','fedFNormLead','fedFQTitle','fedFQLead',
+    'fedExplainTitle','fedExplainLead',
     'section3Chip','section3Title','section3Lead','compareTitle','compareLead','compareMetric1','compareMetric2','compareMetric3','compareMetric4',
     'logIvcdHowTitle','logIvcdHowCopy','logIvcdExplainTitle','logIvcdExplainLead','logIvcdPlotTitle','logIvcdPlotLead',
     'compareBatchBtn','compareFedBtn'
@@ -756,11 +767,12 @@ async function init() {
     applyTranslations();
   });
   el('csvBtn').addEventListener('click', downloadBatchCSV);
-  el('fedIntervalSelect').addEventListener('change', (e) => {
-    fedActiveInterval = Number.parseInt(e.target.value, 10);
+  window.setFedInterval = (idx) => {
+    fedActiveInterval = idx;
+    populateFedControls();
     renderFedSection();
     renderCompareSection();
-  });
+  };
   el('compareBatchBtn').addEventListener('click', () => {
     compareSource = 'batch';
     renderCompareSection();
